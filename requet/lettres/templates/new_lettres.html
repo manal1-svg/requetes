@@ -1,0 +1,512 @@
+{% load static %}
+<div class="p-6 max-w-4xl w-full bg-white rounded-lg shadow-lg">
+    <!-- Modal Header -->
+    <div class="flex justify-between items-center pb-4 border-b border-gray-200">
+        <h2 class="text-2xl font-bold text-gray-900">Nouvelle Requête</h2>
+        <button type="button" onclick="closeModal('newLettreModal')" class="text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <!-- Section Navigation -->
+    <div class="sticky top-0 z-10 bg-white pt-4 pb-2 border-b border-gray-200">
+        <div class="flex space-x-4">
+            <button type="button" class="section-button px-4 py-2 rounded-t-md font-medium transition-colors bg-blue-100 text-blue-700 border-b-2 border-blue-700" data-section="basic-info" onclick="setActiveSection('basic-info')">
+                Informations de base
+            </button>
+            <button type="button" class="section-button px-4 py-2 rounded-t-md font-medium transition-colors text-gray-600 hover:bg-gray-100" data-section="details" onclick="setActiveSection('details')">
+                Détails
+            </button>
+            <button type="button" class="section-button px-4 py-2 rounded-t-md font-medium transition-colors text-gray-600 hover:bg-gray-100" data-section="attachments" onclick="setActiveSection('attachments')">
+                Pièces jointes
+            </button>
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" action="{% url 'new_lettres' %}" onsubmit="return handleSubmit(event)" class="space-y-6 p-6">
+        {% csrf_token %}
+
+        <!-- Basic Info Section -->
+        <div id="basic-info" class="form-section">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Subject -->
+                <div class="space-y-2">
+                    <label for="{{ form.subject.id_for_label }}" class="block text-sm font-medium text-gray-700">Sujet <span class="text-red-500">*</span></label>
+                    {{ form.subject }}
+                </div>
+                
+                <!-- Category -->
+                <div class="space-y-2">
+                    <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700">Catégorie <span class="text-red-500">*</span></label>
+                    {{ form.category }}
+                </div>
+                
+                <!-- Date -->
+                <div class="space-y-2">
+                    <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-700">Date de réception <span class="text-red-500">*</span></label>
+                    {{ form.date }}
+                </div>
+                
+                <!-- Deadline -->
+                <div class="space-y-2">
+                    <label for="{{ form.deadline.id_for_label }}" class="block text-sm font-medium text-gray-700">Date limite de réponse <span class="text-red-500">*</span></label>
+                    {{ form.deadline }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Details Section -->
+        <div id="details" class="form-section" style="display: none;">
+            <div class="space-y-6">
+                <!-- Destinations Card -->
+                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
+                    <div class="space-y-4">
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <label class="block text-sm font-medium text-gray-700">Destinations concernées <span class="text-red-500">*</span></label>
+                                <div class="flex items-center space-x-2">
+                                    {{ form.sent_to_all_destinations }}
+                                    <label for="{{ form.sent_to_all_destinations.id_for_label }}" class="text-sm text-gray-600">Tout sélectionner</label>
+                                </div>
+                            </div>
+                            <div id="destinations-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-2">
+                                {% for checkbox in form.destinations %}
+                                <div class="flex items-center">
+                                    {{ checkbox.tag }}
+                                    <label for="{{ checkbox.id_for_label }}" class="ml-2 text-sm text-gray-700">
+                                        {{ checkbox.choice_label }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Services Card -->
+                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Service concerné <span class="text-red-500">*</span></label>
+                        <div id="services-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
+                            {% for radio in form.service %}
+                            <div class="flex items-center">
+                                {{ radio.tag }}
+                                <label for="{{ radio.id_for_label }}" class="ml-2 text-sm text-gray-700">
+                                    {{ radio.choice_label }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <p id="maritime-warning" class="text-xs text-red-500 mt-2 italic hidden">
+                            Le service <strong>MARITIME</strong> est disponible uniquement pour <strong>Nador</strong> ou <strong>Driouch</strong>.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Format Card -->
+                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Format de la requête <span class="text-red-500">*</span></label>
+                        <div id="format-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
+                            {% for radio in form.format %}
+                            <div class="flex items-center">
+                                {{ radio.tag }}
+                                <label for="{{ radio.id_for_label }}" class="ml-2 text-sm text-gray-700">
+                                    {{ radio.choice_label }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Priority Card with Enhanced Colors -->
+                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
+                    <div class="space-y-2 relative">
+                        <label class="block text-sm font-medium text-gray-700">Priorité</label>
+                        <div class="relative">
+                            <button type="button" onclick="togglePriorityDropdown()" 
+                                    class="w-full p-2 border border-gray-300 rounded-md flex items-center justify-between bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-150">
+                                <span id="selected-priority" class="flex items-center space-x-2">
+                                    <!-- Colored circle indicator -->
+                                    <span id="priority-indicator" class="w-3 h-3 rounded-full bg-yellow-500"></span>
+                                    <span id="priority-label">Moyenne</span>
+                                </span>
+                                <i class="fas fa-chevron-down text-gray-500 transition-transform duration-200" id="priority-chevron"></i>
+                            </button>
+                            {{ form.priority }}
+                            <div id="priority-dropdown" class="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg hidden divide-y divide-gray-200">
+                                {% for value, label in form.priority.field.choices %}
+                                    <div onclick="selectPriority('{{ value }}', '{{ label }}')" 
+                                         class="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center space-x-2 transition-colors duration-150
+                                         {% if value == 'low' %}text-green-600
+                                         {% elif value == 'medium' %}text-yellow-600
+                                         {% elif value == 'high' %}text-red-600
+                                         {% endif %}">
+                                        <!-- Colored circle for each option -->
+                                        <span class="w-3 h-3 rounded-full 
+                                            {% if value == 'low' %}bg-green-500
+                                            {% elif value == 'medium' %}bg-yellow-500
+                                            {% elif value == 'high' %}bg-red-500
+                                            {% endif %}"></span>
+                                        <span>{{ label }}</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
+                    <div class="space-y-2">
+                        <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700">Description</label>
+                        {{ form.description }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attachments Section -->
+        <div id="attachments" class="form-section" style="display: none;">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Image Upload -->
+                <div class="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                    <div class="bg-gradient-to-r from-blue-50 to-blue-100 p-3 border-b border-gray-200">
+                        <h3 class="flex items-center text-sm font-semibold text-blue-700">
+                            <i class="fas fa-image mr-2"></i> Image de la Requête
+                        </h3>
+                    </div>
+                    <div class="p-4 border-2 border-dashed border-blue-200 rounded-md text-center cursor-pointer hover:bg-blue-50 transition-colors">
+                        {{ form.image_file }}
+                        <label for="{{ form.image_file.id_for_label }}" class="block p-4 cursor-pointer">
+                            <i class="fas fa-upload text-blue-400 text-2xl mb-2"></i>
+                            <p class="text-sm text-blue-600 font-medium">Glissez-déposez ou cliquez pour télécharger</p>
+                            <p class="text-xs text-gray-500 mt-1">Formats supportés: JPG, PNG, GIF (max 5MB)</p>
+                        </label>
+                        <div id="image-file-display" class="mt-4 hidden">
+                            <div class="flex items-center justify-between bg-blue-50 p-2 rounded-md">
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-image text-blue-500"></i>
+                                    <span class="text-sm text-blue-700 truncate"></span>
+                                </div>
+                                <button type="button" onclick="clearFile('{{ form.image_file.id_for_label }}', 'image-file-display')" class="text-red-500 hover:bg-red-50 p-1 rounded-full">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Template Upload -->
+                <div class="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                    <div class="bg-gradient-to-r from-green-50 to-green-100 p-3 border-b border-gray-200">
+                        <h3 class="flex items-center text-sm font-semibold text-green-700">
+                            <i class="fas fa-file-alt mr-2"></i> Template de réponse
+                        </h3>
+                    </div>
+                    <div class="p-4 border-2 border-dashed border-green-200 rounded-md text-center cursor-pointer hover:bg-green-50 transition-colors">
+                        {{ form.response_template }}
+                        <label for="{{ form.response_template.id_for_label }}" class="block p-4 cursor-pointer">
+                            <i class="fas fa-upload text-green-400 text-2xl mb-2"></i>
+                            <p class="text-sm text-green-600 font-medium">Glissez-déposez ou cliquez pour télécharger</p>
+                            <p class="text-xs text-gray-500 mt-1">Formats supportés: Excel, PDF (max 10MB)</p>
+                        </label>
+                        <div id="template-file-display" class="mt-4 hidden">
+                            <div class="flex items-center justify-between bg-green-50 p-2 rounded-md">
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-file-alt text-green-500"></i>
+                                    <span class="text-sm text-green-700 truncate"></span>
+                                </div>
+                                <button type="button" onclick="clearFile('{{ form.response_template.id_for_label }}', 'template-file-display')" class="text-red-500 hover:bg-red-50 p-1 rounded-full">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+            <div class="flex space-x-3">
+                <button type="button" id="prev-button" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 hidden" onclick="navigateSection('prev')">Précédent</button>
+                <button type="button" id="next-button" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" onclick="navigateSection('next')">Suivant</button>
+            </div>
+            <div class="flex space-x-3" id="submit-buttons" style="display: none;">
+                <button type="button" onclick="closeModal('newLettreModal')" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">Annuler</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Enregistrer la Requête</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+    /* Form Inputs */
+    input[type="text"],
+    input[type="date"],
+    select,
+    textarea {
+        @apply w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500;
+    }
+    
+    /* Checkboxes and Radios */
+    input[type="checkbox"],
+    input[type="radio"] {
+        @apply h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500;
+    }
+    
+    input[type="radio"] {
+        @apply rounded-full;
+    }
+    
+    /* Cards */
+    .card {
+        @apply border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm;
+    }
+    
+    /* File Upload Areas */
+    .file-upload-area {
+        @apply p-4 border-2 border-dashed rounded-md text-center cursor-pointer transition-colors;
+    }
+    
+    /* Priority Section Styles */
+    #priority-dropdown div {
+        transition: background-color 0.2s ease;
+    }
+    
+    #priority-dropdown div:hover {
+        background-color: #f9fafb;
+    }
+    
+    #priority-chevron {
+        transition: transform 0.2s ease;
+    }
+    
+    #priority-chevron.rotate-180 {
+        transform: rotate(180deg);
+    }
+    
+    /* Color classes for priority states */
+    .priority-low {
+        color: #059669;
+    }
+    
+    .priority-medium {
+        color: #d97706;
+    }
+    
+    .priority-high {
+        color: #dc2626;
+    }
+    
+    /* Responsive Grid */
+    @media (min-width: 640px) {
+        .responsive-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+    
+    @media (min-width: 768px) {
+        .responsive-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+</style>
+
+<script>
+    // Initialize form
+    setActiveSection('basic-info');
+
+    // Update file display
+    function updateFileDisplay(inputId, displayId) {
+        const input = document.getElementById(inputId);
+        const display = document.getElementById(displayId);
+        if (input.files && input.files[0]) {
+            display.querySelector('span').textContent = input.files[0].name;
+            display.classList.remove('hidden');
+        }
+    }
+
+    // Clear file input
+    function clearFile(inputId, displayId) {
+        const input = document.getElementById(inputId);
+        const display = document.getElementById(displayId);
+        input.value = '';
+        display.classList.add('hidden');
+    }
+
+    // Toggle all destinations
+    function toggleAllDestinations() {
+        const allCheckbox = document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}');
+        const destinationCheckboxes = document.querySelectorAll('#destinations-container input[type="checkbox"]');
+        
+        destinationCheckboxes.forEach(checkbox => {
+            checkbox.checked = allCheckbox.checked;
+        });
+        updateServiceAvailability();
+    }
+
+    // Section navigation
+    function setActiveSection(sectionId) {
+        document.querySelectorAll('.form-section').forEach(section => {
+            section.style.display = section.id === sectionId ? 'block' : 'none';
+        });
+        
+        document.querySelectorAll('.section-button').forEach(button => {
+            const isActive = button.dataset.section === sectionId;
+            button.classList.toggle('bg-blue-100', isActive);
+            button.classList.toggle('text-blue-700', isActive);
+            button.classList.toggle('border-b-2', isActive);
+            button.classList.toggle('border-blue-700', isActive);
+            button.classList.toggle('text-gray-600', !isActive);
+            button.classList.toggle('hover:bg-gray-100', !isActive);
+        });
+
+        const prevButton = document.getElementById('prev-button');
+        const nextButton = document.getElementById('next-button');
+        const submitButtons = document.getElementById('submit-buttons');
+        
+        if (sectionId === 'basic-info') {
+            prevButton.style.display = 'none';
+            nextButton.style.display = 'inline-flex';
+            submitButtons.style.display = 'none';
+        } else if (sectionId === 'details') {
+            prevButton.style.display = 'inline-flex';
+            nextButton.style.display = 'inline-flex';
+            submitButtons.style.display = 'none';
+        } else if (sectionId === 'attachments') {
+            prevButton.style.display = 'inline-flex';
+            nextButton.style.display = 'none';
+            submitButtons.style.display = 'flex';
+        }
+    }
+
+    // Navigate between sections
+    function navigateSection(direction) {
+        const sections = ['basic-info', 'details', 'attachments'];
+        const currentSection = Array.from(document.querySelectorAll('.form-section')).find(section => section.style.display === 'block').id;
+        const currentIndex = sections.indexOf(currentSection);
+        let nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+
+        if (nextIndex >= 0 && nextIndex < sections.length) {
+            setActiveSection(sections[nextIndex]);
+        }
+    }
+
+    // Toggle priority dropdown
+    function togglePriorityDropdown() {
+        const dropdown = document.getElementById('priority-dropdown');
+        const chevron = document.getElementById('priority-chevron');
+        dropdown.classList.toggle('hidden');
+        chevron.classList.toggle('rotate-180');
+    }
+
+    // Select priority with colored indicators
+    function selectPriority(value, label) {
+        const priorityField = document.getElementById('{{ form.priority.id_for_label }}');
+        const priorityIndicator = document.getElementById('priority-indicator');
+        const priorityLabel = document.getElementById('priority-label');
+        
+        priorityField.value = value;
+        priorityLabel.textContent = label;
+        
+        // Update the color based on priority
+        switch(value) {
+            case 'low':
+                priorityIndicator.className = 'w-3 h-3 rounded-full bg-green-500';
+                priorityLabel.className = 'text-green-600';
+                break;
+            case 'medium':
+                priorityIndicator.className = 'w-3 h-3 rounded-full bg-yellow-500';
+                priorityLabel.className = 'text-yellow-600';
+                break;
+            case 'high':
+                priorityIndicator.className = 'w-3 h-3 rounded-full bg-red-500';
+                priorityLabel.className = 'text-red-600';
+                break;
+        }
+        
+        // Close dropdown
+        document.getElementById('priority-dropdown').classList.add('hidden');
+        document.getElementById('priority-chevron').classList.remove('rotate-180');
+    }
+
+    // Service availability based on destinations
+    function updateServiceAvailability() {
+        const allDestinationsChecked = document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}').checked;
+        const selectedDestinations = Array.from(document.querySelectorAll('#destinations-container input[type="checkbox"]:checked')).map(cb => cb.nextElementSibling.textContent.trim());
+        const maritimeService = document.querySelector('#services-container input[value="MARITIME"]');
+        const onlyNadorOrDriouch = selectedDestinations.every(dest => ['Nador', 'Driouch'].includes(dest));
+        const maritimeWarning = document.getElementById('maritime-warning');
+
+        if (allDestinationsChecked || selectedDestinations.length === 0 || !onlyNadorOrDriouch) {
+            maritimeService.disabled = true;
+            if (maritimeService.checked) {
+                maritimeService.checked = false;
+            }
+            maritimeWarning.classList.remove('hidden');
+        } else {
+            maritimeService.disabled = false;
+            maritimeWarning.classList.add('hidden');
+        }
+    }
+
+    // Form submission validation
+    function handleSubmit(event) {
+        const selectedDestinations = Array.from(document.querySelectorAll('#destinations-container input[type="checkbox"]:checked'));
+        const selectedService = document.querySelector('#services-container input[type="radio"]:checked');
+        const selectedFormat = document.querySelector('#format-container input[type="radio"]:checked');
+
+        if (selectedDestinations.length === 0 && !document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}').checked) {
+            event.preventDefault();
+            alert('Veuillez sélectionner au moins une destination ou cocher "Tout sélectionner".');
+            return false;
+        }
+        if (!selectedService) {
+            event.preventDefault();
+            alert('Veuillez sélectionner un service.');
+            return false;
+        }
+        if (!selectedFormat) {
+            event.preventDefault();
+            alert('Veuillez sélectionner un format de la requête.');
+            return false;
+        }
+        return true;
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set up event listeners
+        document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}').addEventListener('change', toggleAllDestinations);
+        
+        document.querySelectorAll('#destinations-container input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}').checked = false;
+                updateServiceAvailability();
+            });
+        });
+        
+        document.getElementById('{{ form.image_file.id_for_label }}').addEventListener('change', () => 
+            updateFileDisplay('{{ form.image_file.id_for_label }}', 'image-file-display'));
+        
+        document.getElementById('{{ form.response_template.id_for_label }}').addEventListener('change', () => 
+            updateFileDisplay('{{ form.response_template.id_for_label }}', 'template-file-display'));
+        
+        // Initialize service availability
+        updateServiceAvailability();
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('priority-dropdown');
+            const priorityButton = document.querySelector('[onclick="togglePriorityDropdown()"]');
+            
+            if (!dropdown.contains(event.target) && !priorityButton.contains(event.target)) {
+                dropdown.classList.add('hidden');
+                document.getElementById('priority-chevron').classList.remove('rotate-180');
+            }
+        });
+    });
+</script>

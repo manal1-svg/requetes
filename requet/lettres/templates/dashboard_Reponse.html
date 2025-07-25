@@ -1,0 +1,295 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tableau de Bord Utilisateur - Système de Suivi des Requêtes</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            max-height: 90vh;
+            overflow-y: auto;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-blue-800 text-white shadow-md">
+            <div class="p-6">
+                <h2 class="text-xl font-bold">Système de Requêtes</h2>
+                <p class="text-blue-200 text-sm">Suivi des correspondances</p>
+            </div>
+            <nav class="mt-4">
+                <a href="{% url 'dashboard_Reponse' %}" class="flex items-center px-6 py-3 bg-blue-900">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    Tableau de Bord
+                </a>
+                <a href="{% url 'settings' %}" class="flex items-center px-6 py-3 hover:bg-blue-700">
+                    <i class="fas fa-cog mr-3"></i>
+                    Paramètres
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header class="bg-white shadow-sm border-b px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Tableau de Bord Utilisateur</h1>
+                        <p class="text-gray-600">Requêtes pour {{ destination.nom }}</p>
+                    </div>
+                    <form action="{% url 'logout' %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="flex items-center px-4 py-2 text-red-600 border border-red-300 rounded-md hover:bg。没有-red-50">
+                            <i class="fas fa-sign-out-alt mr-2"></i>
+                            Déconnexion
+                        </button>
+                    </form>
+                </div>
+            </header>
+
+            <!-- Main -->
+            <main class="flex-1 overflow-auto p-6">
+                {% if error %}
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md" role="alert">
+                        {{ error }}
+                    </div>
+                {% else %}
+                    <!-- Filters -->
+                    <div class="bg-white shadow rounded-lg mb-6">
+                        <div class="p-4">
+                            <div class="flex items-center gap-2 mb-4">
+                                <i class="fas fa-filter text-blue-600"></i>
+                                <h2 class="text-lg font-semibold">Filtres</h2>
+                            </div>
+                            <form method="get" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="relative">
+                                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                    <input type="text" name="search" value="{{ request.GET.search }}" placeholder="Rechercher..." 
+                                           class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                <select name="statut" class="border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">Tous les statuts</option>
+                                    <option value="en_attente" {% if request.GET.statut == 'en_attente' %}selected{% endif %}>En attente</option>
+                                    <option value="repondu" {% if request.GET.statut == 'repondu' %}selected{% endif %}>Répondu</option>
+                                    <option value="en_retard" {% if request.GET.statut == 'en_retard' %}selected{% endif %}>En retard</option>
+                                </select>
+                                <button type="submit" class="px-4 py-2 border border-gray-300 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">
+                                    Filtrer
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Lettre List -->
+                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                        <div class="p-4 border-b">
+                            <h2 class="text-lg font-semibold">Requêtes Assignées</h2>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sujet</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Échéance</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priorité</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    {% for item in page_obj %}
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" title="{{ item.lettre.sujet }}">
+                                            {{ item.lettre.sujet }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            {{ item.lettre.category }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            {{ item.lettre.date|date:"d/m/Y" }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center gap-2">
+                                                {{ item.lettre.deadline|date:"d/m/Y" }}
+                                                {% if item.lettre.statut == 'en_retard' %}
+                                                    <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">
+                                                        {{ item.lettre.days_overdue }}j retard
+                                                    </span>
+                                                {% elif item.lettre.days_until_deadline <= 2 and item.lettre.statut == 'en_attente' %}
+                                                    <span class="px-2 py-1 text-xs rounded-full border border-orange-300 text-orange-600">
+                                                        {{ item.lettre.days_until_deadline }}j restant
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 py-1 text-xs rounded-full 
+                                                {% if item.lettre.priorite == 'high' %}bg-red-100 text-red-800
+                                                {% elif item.lettre.priorite == 'medium' %}bg-yellow-100 text-yellow-800
+                                                {% else %}bg-green-100 text-green-800{% endif %}">
+                                                {{ item.lettre.get_priorite_display }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 py-1 text-xs rounded-full 
+                                                {% if item.response.statut == 'en_attente' %}bg-yellow-100 text-yellow-800
+                                                {% elif item.response.statut == 'repondu' %}bg-green-100 text-green-800
+                                                {% else %}bg-red-100 text-red-800{% endif %}">
+                                                {{ item.response.statut|default:'En attente' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center gap-2">
+                                                <button onclick="openResponseModal('{{ item.lettre.id }}')" class="text-blue-600 hover:text-blue-800">
+                                                    <i class="fas fa-reply"></i>
+                                                </button>
+                                                {% if item.lettre.response_template %}
+                                                    <a href="{{ item.lettre.response_template.url }}" class="text-green-600 hover:text-green-800" target="_blank">
+                                                        <i class="fas fa-file-alt"></i>
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                            Aucune requête assignée
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% if page_obj.has_previous or page_obj.has_next %}
+                        <div class="px-6 py-4 border-t flex items-center justify-between">
+                            <div class="text-sm text-gray-700">
+                                Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}
+                            </div>
+                            <div class="flex space-x-2">
+                                {% if page_obj.has_previous %}
+                                    <a href="?page={{ page_obj.previous_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                                       class="px-3 py-1 border rounded text-gray-700 hover:bg-gray-100">
+                                        Précédent
+                                    </a>
+                                {% endif %}
+                                {% if page_obj.has_next %}
+                                    <a href="?page={{ page_obj.next_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                                       class="px-3 py-1 border rounded text-gray-700 hover:bg-gray-100">
+                                        Suivant
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </main>
+        </div>
+    </div>
+
+    <!-- Response Modal -->
+    <div id="responseModal" class="modal">
+        <div class="modal-content max-w-4xl w-full">
+            <div class="p-6 bg-white rounded-lg shadow-lg">
+                <div class="flex justify-between items-center pb-4 border-b border-gray-200">
+                    <h2 class="text-2xl font-bold text-gray-900">Répondre à la Requête</h2>
+                    <button type="button" onclick="closeModal('responseModal')" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="response-form-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+       function openResponseModal(lettreId) {
+    fetch(`/lettre/${lettreId}/submit_response/`, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        console.log('GET Response Status:', response.status);
+        if (!response.ok) {
+            throw new Error(`GET Error: ${response.status} ${response.statusText}`);
+        }
+        return response.text();
+    })
+    .then(html => {
+        document.getElementById('response-form-container').innerHTML = html;
+        document.getElementById('responseModal').classList.add('active');
+        const form = document.querySelector('#response-form-container form');
+        if (form) {
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const formData = new FormData(form);
+                fetch(`/lettre/${lettreId}/submit_response/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => {
+                    console.log('POST Response Status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Response Data:', data);
+                    if (data.success) {
+                        alert(data.message);
+                        closeModal('responseModal');
+                        window.location.reload();
+                    } else {
+                        alert(data.message || 'Erreur lors de l\'enregistrement: ' + JSON.stringify(data.errors));
+                    }
+                })
+                .catch(error => {
+                    console.error('POST Error:', error);
+                    alert('Erreur lors de l\'envoi de la réponse: ' + error.message);
+                });
+            });
+        }
+    })
+    .catch(error => {
+        console.error('GET Error:', error);
+        alert('Erreur lors du chargement du formulaire: ' + error.message);
+    });
+}
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+    </script>
+</body>
+</html>
