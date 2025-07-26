@@ -1,0 +1,840 @@
+{% extends 'menu/base.html' %}
+{% load static %}
+
+{% block title %}Paramètres du Système{% endblock %}
+{% block header_title %}Paramètres du Système{% endblock %}
+
+{% block sidebar %}
+<aside class="w-64 bg-blue-800 text-white shadow-md">
+    <div class="p-6">
+        <h2 class="text-xl font-bold">Système de Requêtes</h2>
+        <p class="text-blue-200 text-sm">Suivi des correspondances</p>
+    </div>
+    <nav class="mt-4">
+        <a href="{% url 'lettres:dashboard' %}" class="flex items-center px-6 py-3 hover:bg-blue-700 {% if request.path == '/lettres/' %}bg-blue-900{% endif %}">
+            <i class="fas fa-tachometer-alt mr-3"></i>Tableau de Bord
+        </a>
+        {% if user_role in 'super_admin,admin_saisie,saisie_ec' %}
+        <a href="{% url 'lettres:new_lettres' %}" class="flex items-center px-6 py-3 hover:bg-blue-700 {% if request.path == '/lettres/new_lettres/' %}bg-blue-900{% endif %}">
+            <i class="fas fa-envelope mr-3"></i>Nouvelles Requêtes
+        </a>
+        {% endif %}
+        {% if user_role == 'super_admin' %}
+        <a href="{% url 'lettres:destinations' %}" class="flex items-center px-6 py-3 hover:bg-blue-700 {% if request.path == '/lettres/destinations/' %}bg-blue-900{% endif %}">
+            <i class="fas fa-map-marker-alt mr-3"></i>Destinations
+        </a>
+        {% endif %}
+        <a href="{% url 'lettres:statistics' %}" class="flex items-center px-6 py-3 hover:bg-blue-700 {% if request.path == '/lettres/statistics/' %}bg-blue-900{% endif %}">
+            <i class="fas fa-chart-bar mr-3"></i>Statistiques
+        </a>
+        <a href="{% url 'lettres:archive' %}" class="flex items-center px-6 py-3 hover:bg-blue-700 {% if request.path == '/lettres/archive/' %}bg-blue-900{% endif %}">
+            <i class="fas fa-archive mr-3"></i>Archives
+        </a>
+        {% if user_role == 'super_admin' %}
+        <a href="{% url 'lettres:settings' %}" class="flex items-center px-6 py-3 bg-blue-900">
+            <i class="fas fa-cog mr-3"></i>Paramètres
+        </a>
+        {% endif %}
+    </nav>
+</aside>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-6">
+    {% if messages %}
+    <div class="mb-6 space-y-3">
+        {% for message in messages %}
+        <div class="p-4 rounded-md flex items-start {% if message.tags == 'success' %}bg-green-50 text-green-800 border border-green-200{% else %}bg-red-50 text-red-800 border border-red-200{% endif %}" role="alert">
+            <i class="fas {% if message.tags == 'success' %}fa-check-circle{% else %}fa-exclamation-circle{% endif %} mr-3 mt-0.5"></i>
+            <div class="text-sm">{{ message }}</div>
+            <button type="button" class="ml-auto text-gray-500 hover:text-gray-700" onclick="this.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="border-b border-gray-200 mb-6">
+        <nav class="-mb-px flex space-x-8">
+            <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center {% if active_tab == 'notifications' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}" data-tab="notifications">
+                <i class="fas fa-bell mr-2"></i>Notifications
+            </button>
+            <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center {% if active_tab == 'system' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}" data-tab="system">
+                <i class="fas fa-cog mr-2"></i>Système
+            </button>
+            <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center {% if active_tab == 'users' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}" data-tab="users">
+                <i class="fas fa-users mr-2"></i>Utilisateurs
+            </button>
+            <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center {% if active_tab == 'destinations' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}" data-tab="destinations">
+                <i class="fas fa-map-marker-alt mr-2"></i>Destinations
+            </button>
+        </nav>
+    </div>
+
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <div class="tab-content {% if active_tab != 'notifications' %}hidden{% endif %}" id="notifications">
+            <div class="border-b border-gray-200 px-6 py-5">
+                <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                    <i class="fas fa-bell text-blue-500 mr-2"></i>Paramètres de Notification
+                </h3>
+                <p class="mt-1 text-sm text-gray-500">Configurez les préférences de notification du système</p>
+            </div>
+            <form method="POST" class="divide-y divide-gray-200">
+                {% csrf_token %}
+                <input type="hidden" name="save_settings" value="1">
+                <div class="px-6 py-5 space-y-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Notifications par Email</label>
+                            <p class="mt-1 text-sm text-gray-500">Activez pour recevoir les alertes importantes par email</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            {{ form.email_notifications }}
+                            <span class="toggle-switch"></span>
+                        </label>
+                    </div>
+                    <div>
+                        <label for="{{ form.reminder_frequency.id_for_label }}" class="block text-sm font-medium text-gray-700">Fréquence des Rappels</label>
+                        <p class="mt-1 text-sm text-gray-500">Définissez à quelle fréquence les rappels sont envoyés</p>
+                        <div class="mt-2 max-w-xs">
+                            {{ form.reminder_frequency }}
+                            {% if form.reminder_frequency.errors %}
+                            <p class="mt-1 text-sm text-red-600" role="alert">{{ form.reminder_frequency.errors.as_text }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <label for="{{ form.escalation_time.id_for_label }}" class="block text-sm font-medium text-gray-700">Délai d'Escalade</label>
+                        <p class="mt-1 text-sm text-gray-500">Définissez après combien de temps une requête non traitée est escaladée</p>
+                        <div class="mt-2 max-w-xs">
+                            {{ form.escalation_time }}
+                            {% if form.escalation_time.errors %}
+                            <p class="mt-1 text-sm text-red-600" role="alert">{{ form.escalation_time.errors.as_text }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 text-right">
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fas fa-save mr-2"></i>Enregistrer les modifications
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="tab-content {% if active_tab != 'system' %}hidden{% endif %}" id="system">
+            <div class="border-b border-gray-200 px-6 py-5">
+                <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                    <i class="fas fa-cog text-blue-500 mr-2"></i>Paramètres Système
+                </h3>
+                <p class="mt-1 text-sm text-gray-500">Configuration des règles automatiques du système</p>
+            </div>
+            <form method="POST" class="divide-y divide-gray-200">
+                {% csrf_token %}
+                <input type="hidden" name="save_settings" value="1">
+                <div class="px-6 py-5 space-y-6">
+                    <div>
+                        <h4 class="text-md font-medium text-gray-900 mb-4">Règles d'Archivage Automatique</h4>
+                        <div class="flex items-center justify-between py-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Archivage après 1 an</label>
+                                <p class="mt-1 text-sm text-gray-500">Archiver automatiquement les requêtes en cours non traitées depuis plus d'un an</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                {{ form.archive_in_progress_after_year }}
+                                <span class="toggle-switch"></span>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between py-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Archivage après 1 mois</label>
+                                <p class="mt-1 text-sm text-gray-500">Archiver automatiquement les requêtes clôturées depuis plus d'un mois</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                {{ form.archive_closed_after_month }}
+                                <span class="toggle-switch"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 text-right">
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fas fa-save mr-2"></i>Enregistrer les modifications
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="tab-content {% if active_tab != 'users' %}hidden{% endif %}" id="users">
+            <div class="border-b border-gray-200 px-6 py-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                            <i class="fas fa-users text-blue-500 mr-2"></i>Gestion des Utilisateurs
+                        </h3>
+                        <p class="mt-1 text-sm text-gray-500">Ajoutez et gérez les utilisateurs du système</p>
+                    </div>
+                    <button onclick="openModal('addUserModal')" class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-user-plus mr-2"></i>Nouvel Utilisateur
+                    </button>
+                </div>
+            </div>
+            
+            <div class="px-6 py-5">
+                <div class="bg-white shadow-sm rounded-lg overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilisateur</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rôle</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Affectation</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dernière connexion</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for user in users %}
+                                <tr class="hover:bg-gray-50 transition-colors {% if user.role == 'super_admin' %}bg-purple-50{% endif %}">
+                                    <!-- Colonne Utilisateur -->
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    {{ user.user.username }}
+                                                    {% if user.role == 'super_admin' %}
+                                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-600 text-white">
+                                                        <i class="fas fa-crown mr-1"></i> Super Admin
+                                                    </span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="text-sm text-gray-500">{{ user.user.email }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    
+                                    <!-- Colonne Rôle -->
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex flex-col">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                                {% if user.role == 'super_admin' %}bg-purple-100 text-purple-800
+                                                {% elif user.role == 'admin_saisie' %}bg-blue-100 text-blue-800
+                                                {% elif user.role == 'admin_reponse' %}bg-indigo-100 text-indigo-800
+                                                {% else %}bg-green-100 text-green-800{% endif %}">
+                                                {{ user.get_role_display }}
+                                            </span>
+                                            {% if user.service %}
+                                            <span class="mt-1 text-xs text-gray-500">
+                                                <i class="fas fa-cog mr-1"></i>{{ user.get_service_display }}
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    
+                                    <!-- Colonne Affectation -->
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        {% if user.destination %}
+                                        <div class="flex items-center">
+                                            <i class="fas fa-map-marker-alt text-gray-400 mr-2"></i>
+                                            <span class="text-sm text-gray-900">{{ user.destination.nom }}</span>
+                                        </div>
+                                        {% else %}
+                                        <span class="text-sm text-gray-500">-</span>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <!-- Colonne Dernière connexion -->
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-500">
+                                            {% if user.user.last_login %}
+                                            {{ user.user.last_login|date:"d/m/Y H:i" }}
+                                            {% else %}
+                                            Jamais connecté
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    
+                                    <!-- Colonne Actions -->
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        {% if user.role != 'super_admin' %}
+                                        <div class="flex justify-end space-x-2">
+                                          
+                                            <form method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?');">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="delete_user" value="1">
+                                                <input type="hidden" name="user_id" value="{{ user.user.id }}">
+                                                <button type="submit" class="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50" title="Supprimer">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                        {% else %}
+                                        <span class="text-gray-400" title="Modification non autorisée">
+                                            <i class="fas fa-lock"></i>
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                                        <div class="flex flex-col items-center justify-center py-8">
+                                            <i class="fas fa-users-slash text-gray-300 text-4xl mb-2"></i>
+                                            <p>Aucun utilisateur trouvé</p>
+                                            <button onclick="openModal('addUserModal')" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                                <i class="fas fa-user-plus mr-2"></i>Ajouter un utilisateur
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if users.paginator.num_pages > 1 %}
+                    <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                        <div class="flex-1 flex justify-between sm:hidden">
+                            {% if users.has_previous %}
+                            <a href="?tab=users&page={{ users.previous_page_number }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                Précédent
+                            </a>
+                            {% endif %}
+                            {% if users.has_next %}
+                            <a href="?tab=users&page={{ users.next_page_number }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                Suivant
+                            </a>
+                            {% endif %}
+                        </div>
+                        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                            <div>
+                                <p class="text-sm text-gray-700">
+                                    Affichage de <span class="font-medium">{{ users.start_index }}</span> à <span class="font-medium">{{ users.end_index }}</span> sur <span class="font-medium">{{ users.paginator.count }}</span> utilisateurs
+                                </p>
+                            </div>
+                            <div>
+                                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                    {% if users.has_previous %}
+                                    <a href="?tab=users&page={{ users.previous_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                        <span class="sr-only">Précédent</span>
+                                        <i class="fas fa-chevron-left"></i>
+                                    </a>
+                                    {% endif %}
+                                    
+                                    {% for num in users.paginator.page_range %}
+                                        {% if users.number == num %}
+                                        <a href="?tab=users&page={{ num }}" aria-current="page" class="z-10 bg-blue-50 border-blue-500 text-blue-600 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                            {{ num }}
+                                        </a>
+                                        {% elif num > users.number|add:'-3' and num < users.number|add:'3' %}
+                                        <a href="?tab=users&page={{ num }}" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                            {{ num }}
+                                        </a>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if users.has_next %}
+                                    <a href="?tab=users&page={{ users.next_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                        <span class="sr-only">Suivant</span>
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                    {% endif %}
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content {% if active_tab != 'destinations' %}hidden{% endif %}" id="destinations">
+            <div class="border-b border-gray-200 px-6 py-5">
+                <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                    <i class="fas fa-map-marker-alt text-blue-500 mr-2"></i>Gestion des Destinations
+                </h3>
+                <p class="mt-1 text-sm text-gray-500">Ajoutez et gérez les destinations disponibles</p>
+            </div>
+            <div class="divide-y divide-gray-200">
+                <div class="px-6 py-5">
+                    <div class="flex justify-end mb-4">
+                        <button onclick="openModal('addDestinationModal')" class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            <i class="fas fa-plus mr-2"></i>Nouvelle Destination
+                        </button>
+                    </div>
+                    <h4 class="text-md font-medium text-gray-900 mb-4">Destinations existantes</h4>
+                    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
+                        <table class="min-w-full divide-y divide-gray-300">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Nom</th>
+                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Téléphone</th>
+                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Email</th>
+                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">WhatsApp</th>
+                                    <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                                        <span class="sr-only">Actions</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 bg-white">
+                                {% for destination in destinations %}
+                                <tr>
+                                    <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">{{ destination.nom }}</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ destination.telephone|default:"-" }}</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ destination.email|default:"-" }}</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ destination.whatsapp|default:"-" }}</td>
+                                    <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                        <div class="flex items-center gap-2">
+                                            <button onclick="openEditModal('{{ destination.id }}', '{{ destination.nom }}', '{{ destination.telephone|default:'' }}', '{{ destination.email|default:'' }}', '{{ destination.whatsapp|default:'' }}')"
+                                                    class="text-blue-600 hover:text-blue-800 action-icon" title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <form method="POST" action="{% url 'lettres:settings' %}?tab=destinations" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette destination ?');">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="delete_destination" value="1">
+                                                <input type="hidden" name="destination_id" value="{{ destination.id }}">
+                                                <button type="submit" class="text-red-600 hover:text-red-900 action-icon" title="Supprimer">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">Aucune destination trouvée</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content max-w-lg w-full">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title text-lg font-semibold text-gray-900">
+                    <i class="fas fa-user-plus mr-2"></i>Ajouter un Utilisateur
+                </h5>
+                <button type="button" class="btn-close text-gray-500 hover:text-gray-700" onclick="closeModal('addUserModal')" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body p-4">
+                {% if user_form.non_field_errors or user_form.errors %}
+                <div class="mb-4 p-4 bg-red-50 text-red-800 border border-red-200 rounded-md error-message" role="alert">
+                    <i class="fas fa-exclamation-circle mr-2"></i>
+                    Veuillez corriger les erreurs ci-dessous pour continuer.
+                </div>
+                {% endif %}
+                <form method="POST" id="user-form" action="{% url 'lettres:settings' %}?tab=users">
+                    {% csrf_token %}
+                    <input type="hidden" name="add_user" value="1">
+                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                        <div>
+                            <label for="{{ user_form.username.id_for_label }}" class="block text-sm font-medium text-gray-700">Nom d'utilisateur</label>
+                            {{ user_form.username }}
+                            {% if user_form.username.errors %}
+                            <p class="mt-1 text-sm text-red-600" role="alert">{{ user_form.username.errors.as_text }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ user_form.email.id_for_label }}" class="block text-sm font-medium text-gray-700">Adresse Email</label>
+                            {{ user_form.email }}
+                            {% if user_form.email.errors %}
+                            <p class="mt-1 text-sm text-red-600" role="alert">{{ user_form.email.errors.as_text }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ user_form.password1.id_for_label }}" class="block text-sm font-medium text-gray-700">Mot de passe</label>
+                            {{ user_form.password1 }}
+                            {% if user_form.password1.errors %}
+                            <p class="mt-1 text-sm text-red-600" role="alert">{{ user_form.password1.errors.as_text }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ user_form.password2.id_for_label }}" class="block text-sm font-medium text-gray-700">Confirmation du mot de passe</label>
+                            {{ user_form.password2 }}
+                            {% if user_form.password2.errors %}
+                            <p class="mt-1 text-sm text-red-600" role="alert">{{ user_form.password2.errors.as_text }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ user_form.role.id_for_label }}" class="block text-sm font-medium text-gray-700">Rôle</label>
+                            {{ user_form.role }}
+                            {% if user_form.role.errors %}
+                            <p class="mt-1 text-sm text-red-600" role="alert">{{ user_form.role.errors.as_text }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ user_form.destination.id_for_label }}" class="block text-sm font-medium text-gray-700">Destination</label>
+                            {{ user_form.destination }}
+                            {% if user_form.destination.errors %}
+                            <p class="mt-1 text-sm text-red-600" role="alert">{{ user_form.destination.errors.as_text }}</p>
+                            {% endif %}
+                        </div>
+                        <div id="service-field" class="hidden sm:col-span-2">
+                            <label for="{{ user_form.service.id_for_label }}" class="block text-sm font-medium text-gray-700">Service</label>
+                            {{ user_form.service }}
+                            {% if user_form.service.errors %}
+                            <p class="mt-1 text-sm text-red-600" role="alert">{{ user_form.service.errors.as_text }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if user_form.non_field_errors %}
+                    <div class="mt-4 p-4 bg-red-50 text-red-800 border border-red-200 rounded-md error-message" role="alert">
+                        {{ user_form.non_field_errors.as_text }}
+                    </div>
+                    {% endif %}
+                    <div class="flex justify-end gap-2 mt-4">
+                        <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300" onclick="closeModal('addUserModal')">
+                            Annuler
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            Ajouter
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Destination Modal -->
+    <div id="addDestinationModal" class="modal">
+        <div class="modal-content max-w-lg w-full">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title text-lg font-semibold text-gray-900">
+                    <i class="fas fa-map-marker-alt mr-2"></i>Ajouter une Destination
+                </h5>
+                <button type="button" class="btn-close text-gray-500 hover:text-gray-700" onclick="closeModal('addDestinationModal')" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body p-4">
+                {% if destination_form.non_field_errors or destination_form.errors %}
+                <div class="mb-4 p-4 bg-red-50 text-red-800 border border-red-200 rounded-md error-message" role="alert">
+                    <i class="fas fa-exclamation-circle mr-2"></i>
+                    Veuillez corriger les erreurs ci-dessous pour continuer.
+                </div>
+                {% endif %}
+                <form method="POST" action="{% url 'lettres:settings' %}?tab=destinations">
+                    {% csrf_token %}
+                    <input type="hidden" name="add_destination" value="1">
+                    <div class="mb-4">
+                        <label for="{{ destination_form.nom.id_for_label }}" class="block text-sm font-medium text-gray-700">Nom</label>
+                        {{ destination_form.nom }}
+                        {% if destination_form.nom.errors %}
+                        <p class="mt-1 text-sm text-red-600" role="alert">{{ destination_form.nom.errors.as_text }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="mb-4">
+                        <label for="{{ destination_form.telephone.id_for_label }}" class="block text-sm font-medium text-gray-700">Téléphone</label>
+                        {{ destination_form.telephone }}
+                        {% if destination_form.telephone.errors %}
+                        <p class="mt-1 text-sm text-red-600" role="alert">{{ destination_form.telephone.errors.as_text }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="mb-4">
+                        <label for="{{ destination_form.email.id_for_label }}" class="block text-sm font-medium text-gray-700">Email</label>
+                        {{ destination_form.email }}
+                        {% if destination_form.email.errors %}
+                        <p class="mt-1 text-sm text-red-600" role="alert">{{ destination_form.email.errors.as_text }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="mb-4">
+                        <label for="{{ destination_form.whatsapp.id_for_label }}" class="block text-sm font-medium text-gray-700">WhatsApp</label>
+                        {{ destination_form.whatsapp }}
+                        {% if destination_form.whatsapp.errors %}
+                        <p class="mt-1 text-sm text-red-600" role="alert">{{ destination_form.whatsapp.errors.as_text }}</p>
+                        {% endif %}
+                    </div>
+                    {% if destination_form.non_field_errors %}
+                    <div class="mt-4 p-4 bg-red-50 text-red-800 border border-red-200 rounded-md error-message" role="alert">
+                        {{ destination_form.non_field_errors.as_text }}
+                    </div>
+                    {% endif %}
+                    <div class="flex justify-end gap-2 mt-4">
+                        <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300" onclick="closeModal('addDestinationModal')">
+                            Annuler
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            Ajouter
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Destination Modal -->
+    <div id="editDestinationModal" class="modal">
+        <div class="modal-content max-w-lg w-full">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title text-lg font-semibold text-gray-900">
+                    <i class="fas fa-edit mr-2"></i>Modifier une Destination
+                </h5>
+                <button type="button" class="btn-close text-gray-500 hover:text-gray-700" onclick="closeModal('editDestinationModal')" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body p-4">
+                <form method="POST" action="{% url 'lettres:settings' %}?tab=destinations">
+                    {% csrf_token %}
+                    <input type="hidden" name="edit_destination" value="1">
+                    <input type="hidden" name="destination_id" id="edit-destination-id">
+                    <div class="mb-4">
+                        <label for="edit-nom" class="block text-sm font-medium text-gray-700">Nom</label>
+                        <select id="edit-nom" name="nom" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" required>
+                            {% for choice in destination_form.nom.field.choices %}
+                            <option value="{{ choice.0 }}">{{ choice.1 }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit-telephone" class="block text-sm font-medium text-gray-700">Téléphone</label>
+                        <input type="text" id="edit-telephone" name="telephone" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Entrez le numéro de téléphone">
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit-email" class="block text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" id="edit-email" name="email" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Entrez l'adresse e-mail">
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit-whatsapp" class="block text-sm font-medium text-gray-700">WhatsApp</label>
+                        <input type="text" id="edit-whatsapp" name="whatsapp" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Entrez le numéro WhatsApp">
+                    </div>
+                    <div class="flex justify-end gap-2 mt-4">
+                        <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300" onclick="closeModal('editDestinationModal')">
+                            Annuler
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            Modifier
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #d1d5db;
+    transition: .4s;
+    border-radius: 34px;
+}
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+input:checked + .toggle-slider {
+    background-color: #3b82f6;
+}
+input:checked + .toggle-slider:before {
+    transform: translateX(26px);
+}
+input:focus + .toggle-slider {
+    box-shadow: 0 0 1px #3b82f6;
+}
+input[type="text"], input[type="email"], input[type="password"], input[type="tel"], select {
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    width: 100%;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="tel"]:focus, select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+}
+input[type="text"].error, input[type="email"].error, input[type="password"].error, input[type="tel"].error, select.error {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 50;
+    justify-content: center;
+    align-items: center;
+}
+.modal.active {
+    display: flex;
+}
+.modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+    width: 90%;
+}
+.action-icon {
+    font-size: 1.1rem;
+}
+.error-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background-color: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fee2e2;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+}
+
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab Switching
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            tabButtons.forEach(btn => {
+                btn.classList.remove('border-blue-500', 'text-blue-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            button.classList.remove('border-transparent', 'text-gray-500');
+            button.classList.add('border-blue-500', 'text-blue-600');
+            
+            tabContents.forEach(content => content.classList.add('hidden'));
+            const tabId = button.getAttribute('data-tab');
+            document.getElementById(tabId).classList.remove('hidden');
+            
+            const url = new URL(window.location);
+            url.searchParams.set('tab', tabId);
+            window.history.pushState({}, '', url);
+        });
+    });
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTab = urlParams.get('tab');
+    if (activeTab) {
+        const tabToActivate = document.querySelector(`.tab-button[data-tab="${activeTab}"]`);
+        if (tabToActivate) {
+            tabToActivate.click();
+        }
+    }
+    
+    // Dynamic Service Field Visibility
+    const roleSelect = document.querySelector('#id_role');
+    const serviceField = document.querySelector('#service-field');
+    
+    function toggleServiceField() {
+        const role = roleSelect.value;
+        if (role === 'saisie_ec' || role === 'saisie_er') {
+            serviceField.classList.remove('hidden');
+        } else {
+            serviceField.classList.add('hidden');
+            document.querySelector('#id_service').value = '';
+        }
+    }
+    
+    if (roleSelect) {
+        roleSelect.addEventListener('change', toggleServiceField);
+        toggleServiceField();
+    }
+
+    // Modal Functions
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('active');
+        // Clear previous errors
+        const errorMessages = document.querySelectorAll(`#${modalId} .text-red-600, #${modalId} .error-message`);
+        errorMessages.forEach(error => error.remove());
+        const errorInputs = document.querySelectorAll(`#${modalId} input.error, #${modalId} select.error`);
+        errorInputs.forEach(input => input.classList.remove('error'));
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+        const form = document.querySelector(`#${modalId} form`);
+        if (form) {
+            form.reset();
+            toggleServiceField();
+            const errorMessages = document.querySelectorAll(`#${modalId} .text-red-600, #${modalId} .error-message`);
+            errorMessages.forEach(error => error.remove());
+            const errorInputs = document.querySelectorAll(`#${modalId} input.error, #${modalId} select.error`);
+            errorInputs.forEach(input => input.classList.remove('error'));
+        }
+    }
+
+    function openEditModal(id, nom, telephone, email, whatsapp) {
+        document.getElementById('edit-destination-id').value = id;
+        document.getElementById('edit-nom').value = nom;
+        document.getElementById('edit-telephone').value = telephone;
+        document.getElementById('edit-email').value = email;
+        document.getElementById('edit-whatsapp').value = whatsapp;
+        openModal('editDestinationModal');
+    }
+
+    // Highlight fields with errors
+    document.querySelectorAll('#user-form input, #user-form select').forEach(input => {
+        if (input.nextElementSibling && input.nextElementSibling.classList.contains('text-red-600')) {
+            input.classList.add('error');
+        }
+    });
+
+    document.querySelectorAll('#addDestinationModal input, #addDestinationModal select').forEach(input => {
+        if (input.nextElementSibling && input.nextElementSibling.classList.contains('text-red-600')) {
+            input.classList.add('error');
+        }
+    });
+
+    // Keep modals open if there are errors
+    {% if user_form.errors %}
+    openModal('addUserModal');
+    {% endif %}
+    {% if destination_form.errors %}
+    openModal('addDestinationModal');
+    {% endif %}
+
+    // Expose modal functions to global scope
+    window.openModal = openModal;
+    window.closeModal = closeModal;
+    window.openEditModal = openEditModal;
+});
+</script>
+{% endblock %}
