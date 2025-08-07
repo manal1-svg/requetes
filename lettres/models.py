@@ -6,6 +6,7 @@ from datetime import timedelta
 from django.core.validators import EmailValidator
 from django.db.models import Q
 
+
 class Destination(models.Model):
     DESTINATION_CHOICES = [
         ('Oujda-Angad', 'Oujda-Angad'),
@@ -214,4 +215,5 @@ class UserProfile(models.Model):
     class Meta:
         verbose_name = 'Profil utilisateur'
         verbose_name_plural = 'Profils utilisateurs'
+
         db_table = 'lettres_userprofile'  # Explicitly set the table name
