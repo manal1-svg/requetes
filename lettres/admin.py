@@ -9,6 +9,7 @@ class DestinationAdmin(admin.ModelAdmin):
     search_fields = ('nom', 'telephone', 'email')
     ordering = ('nom',)
 
+
 @admin.register(Lettre)
 class LettreAdmin(admin.ModelAdmin):
     list_display = ('subject', 'category', 'date', 'deadline', 'priority', 'statut', 'sent_to_all_destinations', 'get_destinations')
@@ -52,4 +53,5 @@ class UserProfileAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'user__email')
     list_editable = ('role', 'destination', 'service')
     ordering = ('user',)
+
     autocomplete_fields = ('destination',)
