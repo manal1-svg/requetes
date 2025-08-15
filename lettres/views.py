@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Count, Q
+from django.db.models import Avg, Count, Q, Case, When, IntegerField
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 from django.db import IntegrityError
@@ -91,15 +91,22 @@ def dashboard(request):
         )
         avg_response_time = total_hours / responded_lettres.count() if responded_lettres.count() > 0 else 0
 
+    today = datetime.now().date()
     lettres_with_progress = []
     for lettre in lettres:
         responded_count = lettre.reponses.filter(statut='repondu').count()
         total_destinations = lettre.destinations.count() if not lettre.sent_to_all_destinations else Destination.objects.count()
+        days_overdue = (today - lettre.deadline).days if lettre.deadline and today > lettre.deadline else 0
+        days_until_deadline = (lettre.deadline - today).days if lettre.deadline and today <= lettre.deadline else 0
         lettres_with_progress.append({
             'lettre': lettre,
             'responded_count': responded_count,
-            'total_destinations': total_destinations
+            'total_destinations': total_destinations,
+            'days_overdue': days_overdue,
+            'days_until_deadline': days_until_deadline
         })
+
+    total_lettres = lettres.count()
 
     # Paginate lettres
     paginator = Paginator(lettres_with_progress, 10)
@@ -123,6 +130,7 @@ def dashboard(request):
         'categorie_filter': categorie_filter,
         'destination_filter': destination_filter,
         'user_role': profile.role,
+        'total_lettres': total_lettres,
     }
     return render(request, 'create_requet/dashboard.html', context)
 
@@ -248,7 +256,7 @@ def new_lettres(request):
 
 import logging
 logger = logging.getLogger(__name__)
-login_required
+@login_required
 def submit_response(request, lettre_id):
     try:
         profile = request.user.userprofile
@@ -416,40 +424,90 @@ def destinations(request):
 
 @login_required
 def statistics(request):
+    """
+    View: Display statistics of requests per region/destination
+    based on the authenticated user's role and permissions.
+    """
+
+    # --- 1. Retrieve the user profile ---
     try:
         profile = request.user.userprofile
     except UserProfile.DoesNotExist:
         return render(request, 'error.html', {
-            'error': 'Votre compte n’a pas de profil utilisateur configuré. Contactez l’administrateur.'
+            'error': (
+                "Votre compte n’a pas de profil utilisateur configuré. "
+                "Contactez l’administrateur."
+            )
         })
 
-    lettres = Lettre.objects.all()
+    # --- 2. Base queryset for letters (lettres) ---
+    lettres_qs = Lettre.objects.all()
+
     if profile.role == 'saisie_ec':
-        lettres = lettres.filter(service=profile.service)
+        lettres_qs = lettres_qs.filter(service=profile.service)
+
     elif profile.role in ['admin_reponse', 'saisie_er']:
-        lettres = lettres.filter(Q(destinations=profile.destination) | Q(sent_to_all_destinations=True))
-        if profile.role == 'saisie_er':
-            lettres = lettres.filter(service=profile.service)
-    elif profile.role == 'admin_saisie':
-        lettres = lettres.filter(Q(destinations=profile.destination) | Q(sent_to_all_destinations=True))
-
-    avg_response_time = 0
-    responded_lettres = lettres.filter(statut='repondu')
-    if responded_lettres.exists():
-        total_hours = sum(
-            (lettre.reponses.first().temps_reponse for lettre in responded_lettres
-             if lettre.reponses.exists() and lettre.reponses.first().temps_reponse),
-            0
+        lettres_qs = lettres_qs.filter(
+            Q(destinations=profile.destination) |
+            Q(sent_to_all_destinations=True)
         )
-        avg_response_time = total_hours / responded_lettres.count() if responded_lettres.count() > 0 else 0
+        if profile.role == 'saisie_er':
+            lettres_qs = lettres_qs.filter(service=profile.service)
 
-    context = {
-        'lettres': lettres,
-        'avg_response_time': round(avg_response_time, 1),
+    elif profile.role == 'admin_saisie':
+        lettres_qs = lettres_qs.filter(
+            Q(destinations=profile.destination) |
+            Q(sent_to_all_destinations=True)
+        )
+
+    # --- 3. Determine destinations to include ---
+    if profile.role in ['admin_reponse', 'saisie_er', 'admin_saisie']:
+        destinations = [profile.destination] if profile.destination else []
+    else:
+        destinations = Destination.objects.all()
+
+    # --- 4. Prepare statistics for each destination ---
+    region_stats = []
+    for dest in destinations:
+        responses_qs = Response.objects.filter(destination=dest)
+
+        # Apply additional filters based on role
+        if profile.role == 'saisie_ec':
+            responses_qs = responses_qs.filter(lettre__service=profile.service)
+        elif profile.role in ['admin_reponse', 'saisie_er', 'admin_saisie']:
+            responses_qs = responses_qs.filter(destination=profile.destination)
+            if profile.role == 'saisie_er':
+                responses_qs = responses_qs.filter(lettre__service=profile.service)
+
+        # Counts
+        total_requetes = responses_qs.count()
+        en_attente = responses_qs.filter(statut='en_attente').count()
+        repondues = responses_qs.filter(statut='repondu').count()
+        en_retard = responses_qs.filter(statut='en_retard').count()
+
+        # Rates and averages
+        taux_reponse = (repondues / total_requetes * 100) if total_requetes else 0
+        avg_time = (
+            responses_qs.filter(statut='repondu')
+            .aggregate(avg=Avg('temps_reponse'))['avg'] or 0
+        )
+
+        # Append statistics
+        region_stats.append({
+            'destination': getattr(dest, 'nom', 'N/A'),
+            'total': total_requetes,
+            'en_attente': en_attente,
+            'repondues': repondues,
+            'en_retard': en_retard,
+            'taux_reponse': round(taux_reponse, 1),
+            'avg_response_time': round(avg_time, 1),
+        })
+
+    # --- 5. Render template ---
+    return render(request, 'menu/statistics.html', {
+        'region_stats': region_stats,
         'user_role': profile.role,
-    }
-    return render(request, 'menu/statistics.html', context)
-
+    })
 @login_required
 def archive(request):
     try:
@@ -459,7 +517,17 @@ def archive(request):
             'error': 'Votre compte n’a pas de profil utilisateur configuré. Contactez l’administrateur.'
         })
 
-    lettres = Lettre.objects.filter(statut='repondu')
+    # Define cutoff dates
+    one_year_ago = datetime.now().date() - timedelta(days=365)  # 1 year ago for "en cours"
+    one_month_ago = datetime.now().date() - timedelta(days=30)  # 1 month ago for "repondu"
+
+    # Base query for archived letters
+    lettres = Lettre.objects.filter(
+        Q(statut__in=['en_attente', 'en_retard'], deadline__lte=one_year_ago) |  # En cours, deadline > 1 year
+        Q(statut='repondu', reponses__date_reponse__lte=one_month_ago)  # Repondu, response date > 1 month
+    ).distinct()
+
+    # Apply role-based filtering
     if profile.role == 'saisie_ec':
         lettres = lettres.filter(service=profile.service)
     elif profile.role in ['admin_reponse', 'saisie_er']:
@@ -469,8 +537,23 @@ def archive(request):
     elif profile.role == 'admin_saisie':
         lettres = lettres.filter(Q(destinations=profile.destination) | Q(sent_to_all_destinations=True))
 
+    # Prepare lettres with additional data
+    lettres_with_data = []
+    for lettre in lettres:
+        # Get the latest response with statut='repondu'
+        last_response = lettre.reponses.filter(statut='repondu').order_by('-date_reponse').first()
+        lettres_with_data.append({
+            'lettre': lettre,
+            'last_response_date': last_response.date_reponse if last_response else None
+        })
+
+    # Paginate lettres
+    paginator = Paginator(lettres_with_data, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     context = {
-        'lettres': lettres,
+        'page_obj': page_obj,
         'user_role': profile.role,
     }
     return render(request, 'menu/archive.html', context)
@@ -792,12 +875,16 @@ def lettre_detail(request, pk):
         destinations = lettre.destinations.all()
 
     for destination in destinations:
-        response, created = Response.objects.get_or_create(lettre=lettre, destination=destination, defaults={'statut': 'en_attente'})
+        response, created = Response.objects.get_or_create(
+            lettre=lettre,
+            destination=destination,
+            defaults={'statut': 'en_attente'}
+        )
         rappels = list(response.rappels.values('type', 'date', 'time', 'message', 'status'))
-
         destinations_data.append({
             'nom': destination.nom,
             'statut': response.statut,
+            'date_reponse': response.date_reponse.strftime('%d/%m/%Y') if response.date_reponse else None,
             'rappels': rappels,
             'email': destination.email or ''
         })
@@ -962,5 +1049,3 @@ def settings_page(request):
         'active_tab': request.GET.get('tab', 'notifications'),
     }
     return render(request, 'menu/settings.html', context)
-
-    
