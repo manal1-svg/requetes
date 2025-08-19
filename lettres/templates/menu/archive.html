@@ -1,0 +1,686 @@
+{% extends 'menu/base.html' %}
+{% load static %}
+
+{% block title %}Archives - Système de Suivi des Requêtes{% endblock %}
+
+{% block content %}
+<div class="flex-1 flex flex-col overflow-hidden">
+   
+
+    <!-- Main -->
+    <main class="flex-1 overflow-auto p-6 bg-gray-50">
+        <div class="bg-white shadow-lg rounded-xl border border-gray-100">
+            <div class="p-5 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <h2 class="text-xl font-bold text-gray-800">Liste des Requêtes Archivées</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Sujet</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Catégorie</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Échéance</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Statut</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Destinations</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date de Clôture</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for item in page_obj %}
+                        <tr class="hover:bg-gray-50 transition-colors duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                                        <i class="fas fa-envelope text-blue-600"></i>
+                                    </div>
+                                    <div class="text-sm font-medium text-gray-900 max-w-xs truncate" title="{{ item.lettre.subject }}">
+                                        {{ item.lettre.subject }}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="badge px-2.5 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800">
+                                    {{ item.lettre.category }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <div class="flex items-center">
+                                    <i class="far fa-calendar-alt text-gray-400 mr-1"></i>
+                                    {{ item.lettre.date|date:"d/m/Y" }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ item.lettre.deadline|date:"d/m/Y" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="badge px-2.5 py-1 text-xs font-medium rounded-full 
+                                    {% if item.lettre.statut == 'repondu' %}bg-green-100 text-green-800
+                                    {% elif item.lettre.statut == 'en_retard' %}bg-red-100 text-red-800
+                                    {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    {{ item.lettre.get_statut_display }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <div class="flex flex-wrap gap-1">
+                                    {% if item.lettre.sent_to_all_destinations %}
+                                        <span class="badge px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 font-medium">
+                                            Toutes
+                                        </span>
+                                    {% else %}
+                                        {% for region in item.lettre.destinations.all|slice:":2" %}
+                                            <span class="badge px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 font-medium">
+                                                {{ region.nom }}
+                                            </span>
+                                        {% endfor %}
+                                        {% if item.lettre.destinations.count > 2 %}
+                                            <span class="badge px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 font-medium">
+                                                +{{ item.lettre.destinations.count|add:"-2" }}
+                                            </span>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ item.last_response_date|date:"d/m/Y"|default:"N/A" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button onclick="openDetailModal('{{ item.lettre.id }}')" 
+                                        class="text-blue-600 hover:text-blue-800 transition-colors duration-200" 
+                                        title="Voir détails">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="px-6 py-8 text-center">
+                                <div class="flex flex-col items-center justify-center text-gray-400">
+                                    <i class="far fa-folder-open fa-2x mb-3"></i>
+                                    <span class="text-lg font-medium">Aucune requête archivée</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                <div class="flex items-center justify-between">
+                    <div class="text-sm text-gray-700">
+                        Affichage de <span class="font-medium">{{ page_obj.start_index }}</span> à <span class="font-medium">{{ page_obj.end_index }}</span> sur <span class="font-medium">{{ page_obj.paginator.count }}</span> requêtes
+                    </div>
+                    <nav class="flex space-x-2">
+                        {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}" 
+                           class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200">
+                            <i class="fas fa-chevron-left mr-1"></i> Précédent
+                        </a>
+                        {% endif %}
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                            <span class="px-4 py-2 border border-blue-500 rounded-md text-sm font-medium text-white bg-blue-600">
+                                {{ num }}
+                            </span>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <a href="?page={{ num }}" 
+                               class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200">
+                                {{ num }}
+                            </a>
+                            {% endif %}
+                        {% endfor %}
+                        {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}" 
+                           class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200">
+                            Suivant <i class="fas fa-chevron-right ml-1"></i>
+                        </a>
+                        {% endif %}
+                    </nav>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Detail Lettre Modal -->
+        <div id="detailLettreModal" class="modal">
+            <div class="modal-content max-w-5xl w-full">
+                <div class="p-6 max-w-5xl w-full bg-white rounded-xl shadow-lg">
+                    <div class="border-b border-gray-200 bg-gradient-to-r from-slate-50 to-blue-50 px-6 py-4 rounded-t-xl">
+                        <div class="flex justify-between items-center">
+                            <h1 class="modal-title text-2xl font-bold text-slate-800">Détails de la Lettre</h1>
+                            <button type="button" class="text-slate-500 hover:text-slate-700 transition-colors duration-200" onclick="closeModal('detailLettreModal')" aria-label="Close">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modal-body mt-4 px-6">
+                        <div class="mb-6">
+                            <h5 class="text-lg font-semibold text-slate-800 mb-4">Informations Générales</h5>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <div class="space-y-1">
+                                    <p class="text-slate-500 text-xs font-medium">Sujet</p>
+                                    <p class="font-medium text-slate-900 text-sm" id="detail-subject">N/A</p>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-slate-500 text-xs font-medium">Catégorie</p>
+                                    <span class="badge bg-violet-100 text-violet-800 px-2.5 py-0.5 rounded-full text-xs font-medium" id="detail-category">N/A</span>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-slate-500 text-xs font-medium">Service</p>
+                                    <span class="badge bg-sky-100 text-sky-800 px-2.5 py-0.5 rounded-full text-xs font-medium" id="detail-service-info">N/A</span>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-slate-500 text-xs font-medium">Priorité</p>
+                                    <span class="badge px-2.5 py-0.5 rounded-full text-xs font-medium" id="detail-priority">N/A</span>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-slate-500 text-xs font-medium">Date de Réception</p>
+                                    <p class="font-medium text-slate-900 text-sm" id="detail-date">N/A</p>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-slate-500 text-xs font-medium">Échéance</p>
+                                    <p class="font-medium text-slate-900 text-sm" id="detail-deadline-display">N/A</p>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-slate-500 text-xs font-medium">Rappels Envoyés</p>
+                                    <p class="font-medium text-slate-900 text-sm" id="detail-rappels-envoyes">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-6">
+                            <div class="flex items-center justify-between mb-2">
+                                <h5 class="text-lg font-semibold text-slate-800">
+                                    <i class="fas fa-chart-line mr-2 text-blue-500"></i>
+                                    Progression Globale
+                                </h5>
+                                <span class="text-sm text-slate-600" id="detail-progress-text">0/0 régions</span>
+                            </div>
+                            <div class="h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-300" id="detail-progress-bar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="mb-6">
+                            <h5 class="text-lg font-semibold text-slate-800 mb-4">
+                                <i class="fas fa-map-marker-alt mr-2 text-blue-500"></i>
+                                Statut par Région
+                            </h5>
+                            <div class="space-y-4" id="detail-regions-container">
+                                <!-- Regions will be populated dynamically -->
+                            </div>
+                        </div>
+                        <div class="border-t border-slate-200 pt-4">
+                            <button id="detail-template-button" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-medium rounded-lg shadow-md hover:from-blue-600 hover:to-blue-700 transition-all duration-200" style="display: none;">
+                                <i class="fas fa-file-download mr-2"></i>
+                                Télécharger le Template
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rappels Modal -->
+        <div id="rappelsModal" class="modal">
+            <div class="modal-content max-w-2xl w-full bg-white rounded-xl shadow-2xl overflow-hidden">
+                <div class="border-b border-gray-200 px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                <i class="fas fa-history text-blue-600 mr-2"></i>
+                                Historique des rappels - <span id="selectedRegionName" class="font-medium ml-1"></span>
+                            </h3>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Email: <span id="selectedRegionEmail" class="text-gray-700"></span>
+                            </p>
+                        </div>
+                        <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors transform hover:rotate-90" onclick="closeModal('rappelsModal')" aria-label="Close">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="mb-6 max-h-96 overflow-y-auto pr-2">
+                        <div id="rappelsContainer" class="space-y-3">
+                            <!-- Rappels will be populated here -->
+                        </div>
+                    </div>
+                    <div class="border-t border-gray-200 pt-4">
+                        <h4 class="text-sm font-medium text-gray-500 mb-3 flex items-center">
+                            <i class="fas fa-bolt text-yellow-500 mr-2"></i>
+                            Actions rapides
+                        </h4>
+                        <button onclick="sendEmailReminder(selectedLettreId, selectedRegion)" 
+                                class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:-translate-y-0.5">
+                            <i class="fas fa-paper-plane mr-2"></i>
+                            Envoyer un nouveau rappel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+    body {
+        font-family: 'Inter', sans-serif;
+    }
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 50;
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal.active {
+        display: flex;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        width: 90%;
+        max-width: 800px;
+    }
+    .badge {
+        @apply px-2.5 py-1 text-xs font-medium rounded-full;
+    }
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        min-width: 120px;
+    }
+    .btn-history {
+        background-color: #f3f4f6;
+        color: #4b5563;
+        border: 1px solid #e5e7eb;
+    }
+    .btn-history:hover {
+        background-color: #e5e7eb;
+        transform: translateY(-1px);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .btn-download-response {
+        background-color: #ecfdf5;
+        color: #15803d;
+        border: 1px solid #16a34a;
+    }
+    .btn-download-response:hover {
+        background-color: #d1fae5;
+        transform: translateY(-1px);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .btn-reminder {
+        background-color: #fef3c7;
+        color: #b45309;
+        border: 1px solid #f59e0b;
+    }
+    .btn-reminder:hover {
+        background-color: #fef9c3;
+        transform: translateY(-1px);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .rappel-item {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        border-left: 4px solid;
+        transition: all 0.2s ease;
+    }
+    .rappel-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .rappel-item.delivered {
+        border-left-color: #10b981;
+        background-color: #f0fdf4;
+    }
+    .rappel-item.sent {
+        border-left-color: #f59e0b;
+        background-color: #fffbeb;
+    }
+    .rappel-item.failed {
+        border-left-color: #ef4444;
+        background-color: #fef2f2;
+    }
+    .rappel-time {
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+    .rappel-message {
+        font-size: 0.875rem;
+        color: #374151;
+    }
+    .region-card {
+        position: relative;
+        padding: 1.25rem;
+        border-radius: 0.75rem;
+        background: white;
+        border: 1px solid #e5e7eb;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+    }
+    .region-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .region-card.status-repondu {
+        border-color: #10b981;
+    }
+    .region-card.status-attente {
+        border-color: #f59e0b;
+    }
+    .region-card.status-retard {
+        border-color: #ef4444;
+    }
+    .status-circle {
+        @apply w-3 h-3 rounded-full mr-2 inline-block;
+    }
+    ::-webkit-scrollbar {
+        width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 10px;
+    }
+    @keyframes fade-in {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fade-out {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(10px); }
+    }
+    .animate-fade-in {
+        animation: fade-in 0.3s ease-out forwards;
+    }
+    .animate-fade-out {
+        animation: fade-out 0.3s ease-out forwards;
+    }
+</style>
+
+<script>
+    // Global variables for tracking selected lettre and region
+    let selectedLettreId = null;
+    let selectedRegion = null;
+
+    // Modal control functions
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('active');
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+
+    // Function to trigger template download
+    function downloadTemplate(url) {
+        if (url) {
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = '';
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            alert('Aucun fichier template disponible.');
+        }
+    }
+
+    // Fetch and display lettre details
+    function openDetailModal(lettreId) {
+        fetch(`/lettre/${lettreId}/detail/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value || '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur réseau ou serveur : ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            document.getElementById('detail-subject').textContent = data.subject || 'N/A';
+            document.getElementById('detail-service-info').textContent = data.service || 'N/A';
+            document.getElementById('detail-category').textContent = data.category || 'N/A';
+            document.getElementById('detail-date').textContent = data.date || 'N/A';
+            document.getElementById('detail-rappels-envoyes').textContent = data.rappels_envoyes || '0';
+
+            let deadlineContent = data.deadline || 'N/A';
+            if (data.days_overdue > 0) {
+                deadlineContent += ` <span class="badge bg-red-100 text-red-800">${data.days_overdue}j retard</span>`;
+            } else if (data.days_until_deadline <= 2 && data.statut === 'en_attente') {
+                deadlineContent += ` <span class="badge bg-orange-100 text-orange-800">${data.days_until_deadline}j restant</span>`;
+            }
+            document.getElementById('detail-deadline-display').innerHTML = deadlineContent;
+
+            const priorityClass = data.priority === 'high' ? 'bg-red-600 text-white' : 
+                                 data.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
+                                 'bg-green-100 text-green-800';
+            document.getElementById('detail-priority').textContent = data.get_priority_display || 'N/A';
+            document.getElementById('detail-priority').className = `badge ${priorityClass}`;
+
+            const respondedCount = data.destinations.filter(dest => dest.statut === 'repondu').length;
+            const totalDestinations = data.destinations.length;
+            const progressPercentage = totalDestinations ? (respondedCount / totalDestinations * 100) : 0;
+            document.getElementById('detail-progress-bar').style.width = `${progressPercentage}%`;
+            document.getElementById('detail-progress-text').textContent = `${respondedCount}/${totalDestinations} régions`;
+
+            const regionsContainer = document.getElementById('detail-regions-container');
+            regionsContainer.innerHTML = '';
+            data.destinations.forEach(dest => {
+                const statusClass = dest.statut === 'repondu' ? 'bg-green-500' : 
+                                   dest.statut === 'en_retard' ? 'bg-red-500' : 
+                                   'bg-yellow-500';
+                const statusIcon = dest.statut === 'repondu' ? 'fas fa-check-circle' : 
+                                  dest.statut === 'en_retard' ? 'fas fa-exclamation-circle' : 
+                                  'fas fa-clock';
+                const statusLabel = dest.statut.replace('en_attente', 'En attente')
+                                              .replace('repondu', 'Répondu')
+                                              .replace('en_retard', 'En retard');
+
+                let waitingSince = '';
+                if ((dest.statut === 'en_attente' || dest.statut === 'en_retard') && data.date) {
+                    const creationDate = new Date(data.date.split('/').reverse().join('-'));
+                    const now = new Date();
+                    const diffMs = now - creationDate;
+                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    if (diffDays > 0) {
+                        waitingSince = `En attente depuis ${diffDays} jour${diffDays !== 1 ? 's' : ''}`;
+                    }
+                }
+
+                let responseInfo = '';
+                if (dest.statut === 'repondu' && dest.date_reponse) {
+                    responseInfo = `Répondu le ${dest.date_reponse}`;
+                }
+
+                let lastReminder = '';
+                if ((dest.statut === 'en_attente' || dest.statut === 'en_retard') && dest.rappels && dest.rappels.length > 0) {
+                    const latestReminder = dest.rappels.reduce((latest, r) => {
+                        const rDate = new Date(`${r.date}T${r.time}`);
+                        return !latest || rDate > new Date(`${latest.date}T${latest.time}`) ? r : latest;
+                    }, null);
+                    if (latestReminder) {
+                        const rDate = new Date(`${latestReminder.date}T${latestReminder.time}`);
+                        lastReminder = `Dernier rappel le ${rDate.toLocaleDateString('fr-FR')} à ${rDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+                    }
+                }
+
+                const regionItem = document.createElement('div');
+                regionItem.className = `region-card status-${dest.statut.replace('en_', '')}`;
+                regionItem.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center space-x-3">
+                            <div class="status-circle ${statusClass}">
+                                <i class="${statusIcon} text-sm"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-gray-900">${dest.nom}</h4>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <span class="status-badge status-${dest.statut.replace('en_', '')}">${statusLabel}</span>
+                                    ${dest.rappels && dest.rappels.length > 0 ? 
+                                        `<span class="reminders-badge">
+                                            <i class="fas fa-bell mr-1"></i>${dest.rappels.length}
+                                        </span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            ${dest.statut === 'repondu' && dest.response_file ? `
+                                <a href="${dest.response_file}" 
+                                   class="action-btn btn-download-response" target="_blank">
+                                    <i class="fas fa-download mr-1"></i>
+                                    Télécharger Réponse
+                                </a>
+                            ` : ''}
+                            ${dest.rappels && dest.rappels.length > 0 ? `
+                                <button onclick="openRappelsModal('${lettreId}', '${dest.nom.replace(/'/g, "\\'")}')" 
+                                        class="action-btn btn-history">
+                                    <i class="fas fa-history mr-1"></i>
+                                    Historique
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                    ${responseInfo || waitingSince || lastReminder ? `
+                    <div class="mt-3 text-sm text-gray-600 space-y-1">
+                        ${responseInfo ? `<p><i class="fas fa-check-circle text-green-500 mr-1"></i>${responseInfo}</p>` : ''}
+                        ${waitingSince ? `<p><i class="fas fa-clock text-yellow-500 mr-1"></i>${waitingSince}</p>` : ''}
+                        ${lastReminder ? `<p><i class="fas fa-bell text-blue-500 mr-1"></i>${lastReminder}</p>` : ''}
+                    </div>` : ''}
+                `;
+                regionsContainer.appendChild(regionItem);
+            });
+
+            const templateButton = document.getElementById('detail-template-button');
+            if (data.response_template) {
+                templateButton.setAttribute('data-url', data.response_template);
+                templateButton.style.display = 'inline-flex';
+                templateButton.onclick = () => downloadTemplate(data.response_template);
+            } else {
+                templateButton.style.display = 'none';
+                templateButton.onclick = null;
+            }
+
+            openModal('detailLettreModal');
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center animate-fade-in';
+            notification.innerHTML = `
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                Une erreur est survenue lors du chargement des détails.
+            `;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.classList.add('animate-fade-out');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        });
+    }
+
+    // Fetch and display rappels for a specific region
+    function openRappelsModal(lettreId, regionName) {
+        selectedLettreId = lettreId;
+        selectedRegion = regionName;
+        document.getElementById('selectedRegionName').textContent = regionName;
+
+        fetch(`/lettre/${lettreId}/rappels/${encodeURIComponent(regionName)}/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value || '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur réseau ou serveur : ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            const rappelsContainer = document.getElementById('rappelsContainer');
+            rappelsContainer.innerHTML = data.rappels.length ? 
+                data.rappels.map(r => `
+                    <div class="rappel-item ${r.status}">
+                        <div class="flex items-start">
+                            <div class="mr-3">
+                                <div class="rappel-icon ${r.type}">
+                                    <i class="fas fa-envelope text-white"></i>
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <h4 class="font-medium text-gray-900">${r.type === 'email' ? 'Email' : r.type === 'sms' ? 'SMS' : 'Notification'}</h4>
+                                        <p class="rappel-time mt-1">
+                                            <i class="far fa-clock mr-1"></i>
+                                            ${r.date} à ${r.time}
+                                        </p>
+                                    </div>
+                                    <span class="status-badge ${r.status}">
+                                        ${r.status === 'delivered' ? 'Livré' : r.status === 'sent' ? 'Envoyé' : 'Échec'}
+                                    </span>
+                                </div>
+                                <p class="rappel-message mt-2">${r.message}</p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('') : 
+                '<div class="text-center py-5 text-gray-500">Aucun rappel enregistré</div>';
+            
+            document.getElementById('selectedRegionEmail').textContent = data.email || 'N/A';
+            openModal('rappelsModal');
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center animate-fade-in';
+            notification.innerHTML = `
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                Une erreur est survenue lors du chargement des rappels.
+            `;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.classList.add('animate-fade-out');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        });
+    }
+</script>
+{% endblock %}
