@@ -1,4 +1,3 @@
-<!-- lettres/templates/lettres/base.html -->
 {% load static %}
 <!DOCTYPE html>
 <html lang="fr">
@@ -51,17 +50,18 @@
                         <i class="fas fa-tachometer-alt mr-3"></i>
                         Tableau de Bord
                     </a>
-                 
                     {% if user_role == 'super_admin' %}
                         <a href="{% url 'lettres:destinations' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/destinations/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
                             <i class="fas fa-map-marker-alt mr-3"></i>
                             Destinations
                         </a>
                     {% endif %}
-                    <a href="{% url 'lettres:statistics' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/statistics/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
-                        <i class="fas fa-chart-bar mr-3"></i>
-                        Statistiques
-                    </a>
+                    {% if user_role == 'super_admin' or user_role == 'admin_saisie' %}
+                        <a href="{% url 'lettres:statistics' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/statistics/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
+                            <i class="fas fa-chart-bar mr-3"></i>
+                            Statistiques
+                        </a>
+                    {% endif %}
                     <a href="{% url 'lettres:archive' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/archive/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
                         <i class="fas fa-archive mr-3"></i>
                         Archives
