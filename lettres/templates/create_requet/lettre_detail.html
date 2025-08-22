@@ -1,65 +1,66 @@
 {% load static %}
-<div class="p-6 max-w-5xl w-full bg-white rounded-xl shadow-xl">
+<div class="p-6 max-w-5xl w-full bg-white rounded-xl shadow-lg">
     <!-- Modal Header -->
-    <div class="modal-header border-0 pb-4">
-        <div class="w-full">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h1 class="modal-title text-2xl font-bold text-gray-900 mb-4">Détails de la Lettre</h1>
-                    <!-- Informations générales regroupées à gauche -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div class="space-y-1">
-                            <p class="text-gray-500 text-xs font-medium">Sujet</p>
-                            <p class="font-medium text-gray-900 text-sm" id="detail-subject">N/A</p>
-                        </div>
-                        <div class="space-y-1">
-                            <p class="text-gray-500 text-xs font-medium">Catégorie</p>
-                            <span class="badge bg-green-100 text-green-900 px-2.5 py-0.5 rounded-full text-xs font-medium" id="detail-category">N/A</span>
-                        </div>
-                        <div class="space-y-1">
-                            <p class="text-gray-500 text-xs font-medium">Service</p>
-                            <span class="badge bg-cyan-100 text-cyan-900 px-2.5 py-0.5 rounded-full text-xs font-medium" id="detail-service-info">N/A</span>
-                        </div>
-                        <div class="space-y-1">
-                            <p class="text-gray-500 text-xs font-medium">Priorité</p>
-                            <span class="badge px-2.5 py-0.5 rounded-full text-xs font-medium" id="detail-priority">N/A</span>
-                        </div>
-                        <div class="space-y-1">
-                            <p class="text-gray-500 text-xs font-medium">Date de Réception</p>
-                            <p class="font-medium text-gray-900 text-sm" id="detail-date">N/A</p>
-                        </div>
-                        <div class="space-y-1">
-                            <p class="text-gray-500 text-xs font-medium">Échéance</p>
-                            <p class="font-medium text-gray-900 text-sm" id="detail-deadline-display">N/A</p>
-                        </div>
-                    </div>
-                </div>
-                <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" onclick="closeModal('detailLettreModal')" aria-label="Close">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
+    <div class="border-b border-gray-200 bg-gradient-to-r from-slate-50 to-blue-50 px-6 py-4 rounded-t-xl">
+        <div class="flex justify-between items-center">
+            <h1 class="modal-title text-2xl font-bold text-slate-800">Détails de la Lettre</h1>
+            <button type="button" class="text-slate-500 hover:text-slate-700 transition-colors duration-200" onclick="closeModal('detailLettreModal')" aria-label="Close">
+                <i class="fas fa-times text-xl"></i>
+            </button>
         </div>
     </div>
 
     <!-- Modal Body -->
-    <div class="modal-body mt-4">
+    <div class="modal-body mt-4 px-6">
+        <!-- General Information -->
+        <div class="mb-6">
+            <h5 class="text-lg font-semibold text-slate-800 mb-4">Informations Générales</h5>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <div class="space-y-1">
+                    <p class="text-slate-500 text-xs font-medium">Sujet</p>
+                    <p class="font-medium text-slate-900 text-sm" id="detail-subject">N/A</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-slate-500 text-xs font-medium">Catégorie</p>
+                    <span class="badge bg-violet-100 text-violet-800 px-2.5 py-0.5 rounded-full text-xs font-medium" id="detail-category">N/A</span>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-slate-500 text-xs font-medium">Service</p>
+                    <span class="badge bg-sky-100 text-sky-800 px-2.5 py-0.5 rounded-full text-xs font-medium" id="detail-service-info">N/A</span>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-slate-500 text-xs font-medium">Priorité</p>
+                    <span class="badge px-2.5 py-0.5 rounded-full text-xs font-medium" id="detail-priority">N/A</span>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-slate-500 text-xs font-medium">Date de Réception</p>
+                    <p class="font-medium text-slate-900 text-sm" id="detail-date">N/A</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-slate-500 text-xs font-medium">Échéance</p>
+                    <p class="font-medium text-slate-900 text-sm" id="detail-deadline-display">N/A</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Progress Bar -->
         <div class="mb-6">
             <div class="flex items-center justify-between mb-2">
-                <h5 class="text-lg font-semibold text-gray-900">
+                <h5 class="text-lg font-semibold text-slate-800">
+                    <i class="fas fa-chart-line mr-2 text-blue-500"></i>
                     Progression Globale
                 </h5>
-                <span class="text-sm text-gray-600" id="detail-progress-text">0/0</span>
+                <span class="text-sm text-slate-600" id="detail-progress-text">0/0 régions</span>
             </div>
-            <div class="h-3 bg-gray-200 rounded-full overflow-hidden">
-                <div class="h-full bg-gray-900 rounded-full transition-all duration-300" id="detail-progress-bar" style="width: 0%"></div>
+            <div class="h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-300" id="detail-progress-bar" style="width: 0%"></div>
             </div>
         </div>
 
         <!-- Regions List -->
         <div class="mb-6">
-            <h5 class="text-lg font-semibold text-gray-900 mb-3">
-                <i class="fas fa-map-marker-alt mr-2 text-blue-600"></i>
+            <h5 class="text-lg font-semibold text-slate-800 mb-4">
+                <i class="fas fa-map-marker-alt mr-2 text-blue-500"></i>
                 Statut par Région
             </h5>
             <div class="space-y-4" id="detail-regions-container">
@@ -68,342 +69,11 @@
         </div>
 
         <!-- Download Template Button -->
-        <div class="border-top pt-4">
-            <a id="detail-template-link" href="#" class="btn btn-outline-blue-600 btn-sm" style="display: none;">
+        <div class="border-t border-slate-200 pt-4">
+            <button id="detail-template-button" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-medium rounded-lg shadow-md hover:from-blue-600 hover:to-blue-700 transition-all duration-200" style="display: none;">
                 <i class="fas fa-file-download mr-2"></i>
                 Télécharger le Template
-            </a>
-        </div>
-    </div>
-
-   <!-- Rappels History Modal -->
-<div id="rappelsModal" class="modal">
-    <div class="modal-content max-w-2xl w-full bg-white rounded-xl shadow-2xl overflow-hidden">
-        <!-- Modal Header -->
-        <div class="border-b border-gray-200 px-6 py-4 bg-gray-50">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                        <i class="fas fa-history text-blue-600 mr-2"></i>
-                        Historique des rappels - <span id="selectedRegionName" class="font-medium ml-1"></span>
-                    </h3>
-                    <p class="text-xs text-gray-500 mt-1">
-                        Email: <span id="selectedRegionEmail" class="text-gray-700"></span>
-                    </p>
-                </div>
-                <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" onclick="closeModal('rappelsModal')" aria-label="Close">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-
-        <!-- Modal Body -->
-        <div class="p-6">
-            <div class="mb-6">
-                <div id="rappelsContainer" class="space-y-4">
-                    <!-- Rappels will be populated here -->
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="border-t border-gray-200 pt-4">
-                <h4 class="text-sm font-medium text-gray-500 mb-3">Actions rapides</h4>
-                <button onclick="sendEmailReminder(selectedLettreId, selectedRegion)" 
-                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                    <i class="fas fa-envelope mr-2"></i>
-                    Envoyer un nouveau rappel
-                </button>
-            </div>
+            </button>
         </div>
     </div>
 </div>
-<style>
-     .modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 50;
-        justify-content: center;
-        align-items: center;
-    }
-    .modal.active {
-        display: flex;
-        animation: fadeIn 0.3s ease-out;
-    }
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    .rappel-item {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.5rem;
-        padding: 1rem;
-        transition: all 0.2s ease;
-    }
-    .rappel-item:hover {
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-    .rappel-status {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
-        border-radius: 9999px;
-        font-weight: 500;
-    }
-    .status-delivered {
-        background-color: #ecfdf5;
-        color: #059669;
-    }
-    .status-sent {
-        background-color: #fef3c7;
-        color: #d97706;
-    }
-    .status-failed {
-        background-color: #fee2e2;
-        color: #dc2626;
-    }
-    .rappel-icon {
-        width: 2.5rem;
-        height: 2.5rem;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: #e0f2fe;
-        color: #0369a1;
-    }
-    .modal-content {
-        max-height: 90vh;
-        overflow-y: auto;
-        background: white;
-        border-radius: 0.5rem;
-        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-        padding: 1.5rem;
-        width: 90%;
-        max-width: 800px;
-    }
-    .region-card {
-        position: relative;
-        padding: 1.25rem;
-        border-radius: 0.75rem;
-        background: white;
-        border: 1px solid #e5e7eb;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-    .region-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-    }
-    .region-card.status-repondu {
-        border-color: #10b981; /* Vert pour Répondu */
-    }
-    .region-card.status-en-attente {
-        border-color: #f59e0b; /* Jaune pour En attente */
-    }
-    .region-card.status-en-retard {
-        border-color: #ef4444; /* Rouge pour En retard */
-    }
-    .status-circle {
-        width: 2rem;
-        height: 2rem;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .status-circle.status-repondu {
-        background-color: #ecfdf5; /* Fond vert clair */
-        color: #10b981; /* Vert */
-    }
-    .status-circle.status-en-attente {
-        background-color: #fef3c7; /* Fond jaune clair */
-        color: #f59e0b; /* Jaune */
-    }
-    .status-circle.status-en-retard {
-        background-color: #fee2e2; /* Fond rouge clair */
-        color: #ef4444; /* Rouge */
-    }
-    .status-badge {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-weight: 500;
-    }
-    .status-badge.status-repondu {
-        background-color: #10b981; /* Vert */
-        color: white;
-    }
-    .status-badge.status-en-attente {
-        background-color: #f59e0b; /* Jaune */
-        color: white;
-    }
-    .status-badge.status-en-retard {
-        background-color: #ef4444; /* Rouge */
-        color: white;
-    }
-    .reminders-badge {
-        font-size: 0.65rem;
-        padding: 0.2rem 0.5rem;
-        border-radius: 9999px;
-        background-color: #fef3c7; /* Jaune clair */
-        color: #92400e; /* Brun foncé */
-        font-weight: 600;
-    }
-    .action-btn {
-        transition: all 0.2s ease;
-        border-radius: 0.5rem;
-        padding: 0.35rem 0.75rem;
-        font-size: 0.75rem;
-    }
-    .action-btn:hover {
-        transform: translateY(-1px);
-    }
-    .action-btn.btn-reminder {
-        background-color: #fef3c7; /* Jaune clair */
-        color: #f59e0b; /* Jaune */
-        border: 1px solid #f59e0b;
-    }
-    .action-btn.btn-reminder:hover {
-        background-color: #fcdf8a; /* Jaune plus clair */
-    }
-    .action-btn.btn-download {
-        background-color: #e0f2fe; /* Bleu clair */
-        color: #2563eb; /* Bleu */
-        border: 1px solid #2563eb;
-    }
-    .action-btn.btn-download:hover {
-        background-color: #bfdbfe; /* Bleu plus clair */
-    }
-   
-    .status-badge.delivered {
-        background-color: #10b981;
-        color: white;
-    }
-    .status-badge.failed {
-        background-color: #ef4444;
-        color: white;
-    }
-    .status-badge.sent {
-        background-color: #f59e0b;
-        color: white;
-    }
-</style>
-
-<script>
-    function closeModal(modalId) {
-        document.getElementById(modalId).classList.remove('active');
-    }
-
-    let selectedLettreId, selectedRegion;
-
-    function sendEmailReminder(lettreId, destination) {
-        fetch(`/lettre/${lettreId}/send_email_reminder/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ destination: destination })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur réseau ou serveur : ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            alert(data.message);
-            if (data.success) {
-                openDetailModal(lettreId); // Refresh modal to update rappels count
-            }
-        })
-        .catch(error => {
-            console.error('Email Error:', error);
-            alert("Erreur lors de l'envoi de l'email: " + error.message);
-        });
-    }
-
-    function openRappelsModal(lettreId, regionName) {
-        selectedLettreId = lettreId;
-        selectedRegion = regionName;
-        document.getElementById('selectedRegionName').textContent = regionName;
-        fetch(`/lettre/${lettreId}/rappels/${regionName}/`, {
-            method: 'GET',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur réseau ou serveur : ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            const rappelsContainer = document.getElementById('rappelsContainer');
-            rappelsContainer.innerHTML = data.rappels.length ? data.rappels.map(r => `
-                <div class="rappel-item border rounded p-3 mb-3">
-                    <div class="d-flex gap-3">
-                        <div class="rappel-icon ${r.type}">
-                            <i class="fas fa-envelope"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-medium small">${r.type.toUpperCase()}</span>
-                                <i class="fas fa-${getStatusIcon(r.status)} ${getStatusColor(r.status)}"></i>
-                            </div>
-                            <p class="small text-muted mb-1">${r.message}</p>
-                            <span class="status-badge ${r.status}">
-                                ${getStatusText(r.status)}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            `).join('') : '<div class="text-center py-5 text-muted">Aucun rappel</div>';
-            document.getElementById('selectedRegionEmail').textContent = data.email || 'N/A';
-            openModal('rappelsModal');
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            alert('Une erreur est survenue lors du chargement des rappels.');
-        });
-    }
-
-    function getStatusIcon(status) {
-        switch (status) {
-            case 'delivered': return 'check-circle';
-            case 'failed': return 'times-circle';
-            default: return 'clock';
-        }
-    }
-
-    function getStatusColor(status) {
-        switch (status) {
-            case 'delivered': return 'text-success';
-            case 'failed': return 'text-danger';
-            default: return 'text-warning';
-        }
-    }
-
-    function getStatusText(status) {
-        switch (status) {
-            case 'delivered': return 'Livré';
-            case 'failed': return 'Échec';
-            default: return 'Envoyé';
-        }
-    }
-
-    function openModal(modalId) {
-        document.getElementById(modalId).classList.add('active');
-    }
-</script>
