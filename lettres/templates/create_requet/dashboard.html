@@ -2,7 +2,6 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tableau de Bord - Système de Suivi des Requêtes</title>
@@ -20,9 +19,14 @@
             z-index: 50;
             justify-content: center;
             align-items: center;
+            animation: fadeIn 0.3s ease-out;
         }
         .modal.active {
             display: flex;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         .modal-content {
             max-height: 90vh;
@@ -58,8 +62,126 @@
         .progress-bar div {
             @apply h-3 rounded-full bg-blue-600 transition-all duration-300;
         }
-        .action-icon {
-            @apply text-lg transition-colors duration-200;
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            min-width: 120px;
+        }
+        .btn-history {
+            background-color: #f3f4f6;
+            color: #4b5563;
+            border: 1px solid #e5e7eb;
+        }
+        .btn-history:hover {
+            background-color: #e5e7eb;
+            transform: translateY(-1px);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .btn-download-response {
+            background-color: #ecfdf5;
+            color: #15803d;
+            border: 1px solid #16a34a;
+        }
+        .btn-download-response:hover {
+            background-color: #d1fae5;
+            transform: translateY(-1px);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .btn-reminder {
+            background-color: #fef3c7;
+            color: #b45309;
+            border: 1px solid #f59e0b;
+        }
+        .btn-reminder:hover {
+            background-color: #fef9c3;
+            transform: translateY(-1px);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .rappel-item {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            border-left: 4px solid;
+            transition: all 0.2s ease;
+        }
+        .rappel-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .rappel-item.delivered {
+            border-left-color: #10b981;
+            background-color: #f0fdf4;
+        }
+        .rappel-item.sent {
+            border-left-color: #f59e0b;
+            background-color: #fffbeb;
+        }
+        .rappel-item.failed {
+            border-left-color: #ef4444;
+            background-color: #fef2f2;
+        }
+        .rappel-time {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+        .rappel-message {
+            font-size: 0.875rem;
+            color: #374151;
+        }
+        .region-card {
+            position: relative;
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            background: white;
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        .region-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .region-card.status-repondu {
+            border-color: #10b981;
+        }
+        .region-card.status-attente {
+            border-color: #f59e0b;
+        }
+        .region-card.status-retard {
+            border-color: #ef4444;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+        }
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fade-out {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(10px); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out forwards;
+        }
+        .animate-fade-out {
+            animation: fade-out 0.3s ease-out forwards;
         }
     </style>
 </head>
@@ -76,6 +198,7 @@
                     <i class="fas fa-tachometer-alt mr-3"></i>
                     Tableau de Bord
                 </a>
+                {% if user_role != 'saisie_ec' %}
                 <a href="{% url 'lettres:destinations' %}" class="flex items-center px-6 py-3 hover:bg-blue-700">
                     <i class="fas fa-map-marker-alt mr-3"></i>
                     Destinations
@@ -84,13 +207,14 @@
                     <i class="fas fa-chart-bar mr-3"></i>
                     Statistiques
                 </a>
-                <a href="{% url 'lettres:archive' %}" class="flex items-center px-6 py-3 hover:bg-blue-700">
-                    <i class="fas fa-archive mr-3"></i>
-                    Archives
-                </a>
                 <a href="{% url 'lettres:settings' %}" class="flex items-center px-6 py-3 hover:bg-blue-700">
                     <i class="fas fa-cog mr-3"></i>
                     Paramètres
+                </a>
+                {% endif %}
+                <a href="{% url 'lettres:archive' %}" class="flex items-center px-6 py-3 hover:bg-blue-700">
+                    <i class="fas fa-archive mr-3"></i>
+                    Archives
                 </a>
             </nav>
         </aside>
@@ -122,7 +246,7 @@
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-sm font-medium text-gray-500">Total des Requêtes</p>
-                                <h3 class="text-2xl font-bold">{{ lettres|length }}</h3>
+                                <h3 class="text-2xl font-bold">{{ total_lettres }}</h3>
                             </div>
                             <div class="p-3 bg-blue-100 rounded-full text-blue-600">
                                 <i class="fas fa-envelope"></i>
@@ -200,12 +324,14 @@
                                 <option value="{{ category }}" {% if request.GET.category == category %}selected{% endif %}>{{ category }}</option>
                                 {% endfor %}
                             </select>
+                            {% if user_role != 'saisie_ec' %}
                             <select name="destination" class="border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">Toutes destinations</option>
                                 {% for destination in destinations %}
                                 <option value="{{ destination.id }}" {% if request.GET.destination == destination.id|stringformat:"s" %}selected{% endif %}>{{ destination.nom }}</option>
                                 {% endfor %}
                             </select>
+                            {% endif %}
                             <button type="submit" class="px-4 py-2 border border-gray-300 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">
                                 Filtrer
                             </button>
@@ -214,103 +340,132 @@
                 </div>
 
                 <!-- Lettre List -->
-                <div class="bg-white shadow rounded-lg overflow-hidden">
-                    <div class="p-4 border-b">
-                        <h2 class="text-lg font-semibold">Liste des Lettres</h2>
+                <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
+                    <div class="p-5 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+                        <h2 class="text-xl font-bold text-gray-800">Liste des Lettres</h2>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sujet</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destinations</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Échéance</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priorité</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progression</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Sujet</th>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Catégorie</th>
+                                    {% if user_role != 'saisie_ec' %}
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Destinations</th>
+                                    {% endif %}
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Échéance</th>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Priorité</th>
+                                    {% if user_role != 'saisie_ec' %}
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Progression</th>
+                                    {% endif %}
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                {% for item in lettres %}
-                                <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" title="{{ item.lettre.subject }}">
-                                        {{ item.lettre.subject }}
+                                {% for item in page_obj %}
+                                <tr class="hover:bg-gray-50 transition-colors duration-150">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                                                <i class="fas fa-envelope text-blue-600"></i>
+                                            </div>
+                                            <div class="text-sm font-medium text-gray-900 max-w-xs truncate" title="{{ item.lettre.subject }}">
+                                                {{ item.lettre.subject }}
+                                            </div>
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        {{ item.lettre.category }}
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800">
+                                            {{ item.lettre.category }}
+                                        </span>
                                     </td>
+                                    {% if user_role != 'saisie_ec' %}
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex flex-wrap gap-1">
                                             {% if item.lettre.sent_to_all_destinations %}
-                                                <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
+                                                <span class="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 font-medium">
                                                     Toutes ({{ item.total_destinations }})
                                                 </span>
                                             {% else %}
                                                 {% for region in item.lettre.destinations.all|slice:":2" %}
-                                                    <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
+                                                    <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 font-medium">
                                                         {{ region.nom }}
                                                     </span>
                                                 {% endfor %}
                                                 {% if item.lettre.destinations.count > 2 %}
-                                                    <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
+                                                    <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 font-medium">
                                                         +{{ item.lettre.destinations.count|add:"-2" }}
                                                     </span>
                                                 {% endif %}
                                             {% endif %}
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        {{ item.lettre.date|date:"d/m/Y" }}
+                                    {% endif %}
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <div class="flex items-center">
+                                            <i class="far fa-calendar-alt text-gray-400 mr-1"></i>
+                                            {{ item.lettre.date|date:"d/m/Y" }}
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center gap-2">
-                                            {{ item.lettre.deadline|date:"d/m/Y" }}
-                                            {% if item.lettre.statut == 'en_retard' %}
-                                                <span class="badge bg-red-100 text-red-800">
-                                                    {{ item.lettre.days_overdue }}j retard
+                                            <span class="text-sm text-gray-600">
+                                                {{ item.lettre.deadline|date:"d/m/Y" }}
+                                            </span>
+                                            {% if item.days_overdue > 0 %}
+                                                <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800 font-medium animate-pulse">
+                                                    {{ item.days_overdue }}j retard
                                                 </span>
-                                            {% elif item.lettre.days_until_deadline <= 2 and item.lettre.statut == 'en_attente' %}
-                                                <span class="badge border-orange-300 text-orange-600">
-                                                    {{ item.lettre.days_until_deadline }}j restant
+                                            {% elif item.days_until_deadline <= 2 and item.lettre.statut == 'en_attente' %}
+                                                <span class="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-800 font-medium">
+                                                    {{ item.days_until_deadline }}j restant
                                                 </span>
                                             {% endif %}
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="badge 
-                                            {% if item.lettre.priority == 'high' %}bg-red-600 text-white
+                                        <span class="px-3 py-1 text-xs font-semibold rounded-full 
+                                            {% if item.lettre.priority == 'high' %}bg-red-100 text-red-800
                                             {% elif item.lettre.priority == 'medium' %}bg-yellow-100 text-yellow-800
                                             {% else %}bg-green-100 text-green-800{% endif %}">
                                             {{ item.lettre.get_priority_display }}
                                         </span>
                                     </td>
+                                    {% if user_role != 'saisie_ec' %}
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center gap-2">
-                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
-                                                <div class="bg-blue-600 h-2.5 rounded-full" 
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-24 bg-gray-200 rounded-full h-2.5">
+                                                <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" 
                                                      style="width: {% widthratio item.responded_count item.total_destinations 100 %}%">
                                                 </div>
                                             </div>
-                                            <span class="text-xs text-gray-500">
+                                            <span class="text-xs font-medium text-gray-500">
                                                 {{ item.responded_count }}/{{ item.total_destinations }}
                                             </span>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center gap-2">
-                                            <button onclick="openDetailModal('{{ item.lettre.id }}')" class="text-blue-600 hover:text-blue-800 action-icon" title="Voir détails">
+                                    {% endif %}
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <div class="flex items-center gap-3">
+                                            <button onclick="openDetailModal('{{ item.lettre.id }}')" 
+                                                    class="text-blue-600 hover:text-blue-800 transition-colors duration-200" 
+                                                    title="Voir détails">
                                                 <i class="fas fa-eye"></i>
                                             </button>
-                                            {% if item.lettre.statut == 'en_attente' %}
-                                                <button onclick="sendGlobalReminder('{{ item.lettre.id }}')" class="text-orange-600 hover:text-orange-800 action-icon" title="Envoyer un rappel global">
+                                            {% if item.lettre.statut == 'en_attente' or item.lettre.statut == 'en_retard' %}
+                                                <button onclick="sendGlobalReminder('{{ item.lettre.id }}')" 
+                                                        class="text-orange-600 hover:text-orange-800 transition-colors duration-200" 
+                                                        title="Envoyer un rappel global">
                                                     <i class="fas fa-envelope"></i>
                                                 </button>
                                             {% endif %}
                                             {% if item.lettre.response_template %}
-                                                <a href="{{ item.lettre.response_template.url }}" class="text-green-600 hover:text-green-800 action-icon" target="_blank" title="Télécharger le template">
-                                                    <i class="fas fa-file-alt"></i>
+                                                <a href="{{ item.lettre.response_template.url }}" 
+                                                   class="text-green-600 hover:text-green-800 transition-colors duration-200" 
+                                                   target="_blank" 
+                                                   title="Télécharger le template">
+                                                    <i class="fas fa-file-download"></i>
                                                 </a>
                                             {% endif %}
                                         </div>
@@ -318,55 +473,191 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="8" class="px-6 py-4 text-center text-gray-500">
-                                        Aucune lettre trouvée
+                                    <td colspan="{% if user_role == 'saisie_ec' %}5{% else %}7{% endif %}" class="px-6 py-8 text-center">
+                                        <div class="flex flex-col items-center justify-center text-gray-400">
+                                            <i class="far fa-folder-open fa-2x mb-3"></i>
+                                            <span class="text-lg font-medium">Aucune lettre trouvée</span>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
-                    {% if is_paginated %}
-                    <div class="px-6 py-4 border-t flex items-center justify-between">
-                        <div class="text-sm text-gray-700">
-                            Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}
-                        </div>
-                        <div class="flex space-x-2">
-                            {% if page_obj.has_previous %}
-                                <a href="?page={{ page_obj.previous_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
-                                   class="px-3 py-1 border rounded text-gray-700 hover:bg-gray-100">
-                                    Précédent
-                                </a>
-                            {% endif %}
-                            {% if page_obj.has_next %}
-                                <a href="?page={{ page_obj.next_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
-                                   class="px-3 py-1 border rounded text-gray-700 hover:bg-gray-100">
-                                    Suivant
-                                </a>
-                            {% endif %}
+                    
+                    {% if page_obj.paginator.num_pages > 1 %}
+                    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-700">
+                                Affichage de <span class="font-medium">{{ page_obj.start_index }}</span> à <span class="font-medium">{{ page_obj.end_index }}</span> sur <span class="font-medium">{{ page_obj.paginator.count }}</span> résultats
+                            </div>
+                            <div class="flex space-x-2">
+                                {% if page_obj.has_previous %}
+                                    <a href="?page={{ page_obj.previous_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                                       class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200">
+                                        <i class="fas fa-chevron-left mr-1"></i> Précédent
+                                    </a>
+                                {% endif %}
+                                
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                        <span class="px-4 py-2 border border-blue-500 rounded-md text-sm font-medium text-white bg-blue-600">
+                                            {{ num }}
+                                        </span>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                        <a href="?page={{ num }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                                           class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200">
+                                            {{ num }}
+                                        </a>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if page_obj.has_next %}
+                                    <a href="?page={{ page_obj.next_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                                       class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200">
+                                        Suivant <i class="fas fa-chevron-right ml-1"></i>
+                                    </a>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                     {% endif %}
+                </div>
+
+                <!-- New Lettre Modal -->
+                <div id="newLettreModal" class="modal">
+                    <div class="modal-content max-w-4xl w-full">
+                        {% include 'create_requet/new_lettres.html' %}
+                    </div>
+                </div>
+
+                <!-- Detail Lettre Modal -->
+                <div id="detailLettreModal" class="modal">
+                    <div class="modal-content max-w-5xl w-full">
+                        <div class="p-6 max-w-5xl w-full bg-white rounded-xl shadow-lg">
+                            <div class="border-b border-gray-200 bg-gradient-to-r from-slate-50 to-blue-50 px-6 py-4 rounded-t-xl">
+                                <div class="flex justify-between items-center">
+                                    <h1 class="modal-title text-2xl font-bold text-slate-800">Détails de la Lettre</h1>
+                                    <button type="button" class="text-slate-500 hover:text-slate-700 transition-colors duration-200" onclick="closeModal('detailLettreModal')" aria-label="Close">
+                                        <i class="fas fa-times text-xl"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="modal-body mt-4 px-6">
+                                <div class="mb-6">
+                                    <h5 class="text-lg font-semibold text-slate-800 mb-4">Informations Générales</h5>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <div class="space-y-1">
+                                            <p class="text-slate-500 text-xs font-medium">Sujet</p>
+                                            <p class="font-medium text-slate-900 text-sm" id="detail-subject">N/A</p>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p class="text-slate-500 text-xs font-medium">Catégorie</p>
+                                            <span class="badge bg-violet-100 text-violet-800 px-2.5 py-0.5 rounded-full text-xs font-medium" id="detail-category">N/A</span>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p class="text-slate-500 text-xs font-medium">Service</p>
+                                            <span class="badge bg-sky-100 text-sky-800 px-2.5 py-0.5 rounded-full text-xs font-medium" id="detail-service-info">N/A</span>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p class="text-slate-500 text-xs font-medium">Priorité</p>
+                                            <span class="badge px-2.5 py-0.5 rounded-full text-xs font-medium" id="detail-priority">N/A</span>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p class="text-slate-500 text-xs font-medium">Date de Réception</p>
+                                            <p class="font-medium text-slate-900 text-sm" id="detail-date">N/A</p>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p class="text-slate-500 text-xs font-medium">Échéance</p>
+                                            <p class="font-medium text-slate-900 text-sm" id="detail-deadline-display">N/A</p>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p class="text-slate-500 text-xs font-medium">Rappels Envoyés</p>
+                                            <p class="font-medium text-slate-900 text-sm" id="detail-rappels-envoyes">0</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-6">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h5 class="text-lg font-semibold text-slate-800">
+                                            <i class="fas fa-chart-line mr-2 text-blue-500"></i>
+                                            Progression Globale
+                                        </h5>
+                                        <span class="text-sm text-slate-600" id="detail-progress-text">0/0 régions</span>
+                                    </div>
+                                    <div class="h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                                        <div class="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-300" id="detail-progress-bar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div class="mb-6">
+                                    <h5 class="text-lg font-semibold text-slate-800 mb-4">
+                                        <i class="fas fa-map-marker-alt mr-2 text-blue-500"></i>
+                                        Statut par Région
+                                    </h5>
+                                    <div class="space-y-4" id="detail-regions-container">
+                                        <!-- Regions will be populated dynamically -->
+                                    </div>
+                                </div>
+                                <div class="border-t border-slate-200 pt-4">
+                                    <button id="detail-template-button" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-medium rounded-lg shadow-md hover:from-blue-600 hover:to-blue-700 transition-all duration-200" style="display: none;">
+                                        <i class="fas fa-file-download mr-2"></i>
+                                        Télécharger le Template
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rappels Modal -->
+                <div id="rappelsModal" class="modal">
+                    <div class="modal-content max-w-2xl w-full bg-white rounded-xl shadow-2xl overflow-hidden">
+                        <div class="border-b border-gray-200 px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                        <i class="fas fa-history text-blue-600 mr-2"></i>
+                                        Historique des rappels - <span id="selectedRegionName" class="font-medium ml-1"></span>
+                                    </h3>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        Email: <span id="selectedRegionEmail" class="text-gray-700"></span>
+                                    </p>
+                                </div>
+                                <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors transform hover:rotate-90" onclick="closeModal('rappelsModal')" aria-label="Close">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="mb-6 max-h-96 overflow-y-auto pr-2">
+                                <div id="rappelsContainer" class="space-y-3">
+                                    <!-- Rappels will be populated here -->
+                                </div>
+                            </div>
+                            <div class="border-t border-gray-200 pt-4">
+                                <h4 class="text-sm font-medium text-gray-500 mb-3 flex items-center">
+                                    <i class="fas fa-bolt text-yellow-500 mr-2"></i>
+                                    Actions rapides
+                                </h4>
+                                <button onclick="sendEmailReminder(selectedLettreId, selectedRegion)" 
+                                        class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:-translate-y-0.5">
+                                    <i class="fas fa-paper-plane mr-2"></i>
+                                    Envoyer un nouveau rappel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>
     </div>
 
-    <!-- New Lettre Modal -->
-    <div id="newLettreModal" class="modal">
-        <div class="modal-content max-w-4xl w-full">
-            {% include 'create_requet/new_lettres.html' %}
-        </div>
-    </div>
-
-    <!-- Detail Lettre Modal -->
-    <div id="detailLettreModal" class="modal">
-        <div class="modal-content max-w-5xl w-full">
-            {% include 'create_requet/lettre_detail.html' %}
-        </div>
-    </div>
-
     <script>
+        // Global variables for tracking selected lettre and region
+        let selectedLettreId = null;
+        let selectedRegion = null;
+
+        // Modal control functions
         function openModal(modalId) {
             document.getElementById(modalId).classList.add('active');
         }
@@ -375,11 +666,27 @@
             document.getElementById(modalId).classList.remove('active');
         }
 
+        // Function to trigger template download
+        function downloadTemplate(url) {
+            if (url) {
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = '';
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                alert('Aucun fichier template disponible.');
+            }
+        }
+
+        // Fetch and display lettre details
         function openDetailModal(lettreId) {
             fetch(`/lettre/${lettreId}/detail/`, {
                 method: 'GET',
                 headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value || '{{ csrf_token }}',
                     'Content-Type': 'application/json',
                 }
             })
@@ -394,11 +701,12 @@
                 document.getElementById('detail-service-info').textContent = data.service || 'N/A';
                 document.getElementById('detail-category').textContent = data.category || 'N/A';
                 document.getElementById('detail-date').textContent = data.date || 'N/A';
+                document.getElementById('detail-rappels-envoyes').textContent = data.rappels_envoyes || '0';
 
                 let deadlineContent = data.deadline || 'N/A';
-                if (data.days_overdue) {
+                if (data.days_overdue > 0) {
                     deadlineContent += ` <span class="badge bg-red-100 text-red-800">${data.days_overdue}j retard</span>`;
-                } else if (data.days_until_deadline <= 2) {
+                } else if (data.days_until_deadline <= 2 && data.statut === 'en_attente') {
                     deadlineContent += ` <span class="badge bg-orange-100 text-orange-800">${data.days_until_deadline}j restant</span>`;
                 }
                 document.getElementById('detail-deadline-display').innerHTML = deadlineContent;
@@ -418,35 +726,32 @@
                 const regionsContainer = document.getElementById('detail-regions-container');
                 regionsContainer.innerHTML = '';
                 data.destinations.forEach(dest => {
-                    const statusClass = dest.statut === 'repondu' ? 'status-repondu' : 
-                                       dest.statut === 'en_retard' ? 'status-en-retard' : 'status-en-attente';
+                    const statusClass = dest.statut === 'repondu' ? 'bg-green-500' : 
+                                       dest.statut === 'en_retard' ? 'bg-red-500' : 
+                                       'bg-yellow-500';
                     const statusIcon = dest.statut === 'repondu' ? 'fas fa-check-circle' : 
-                                      dest.statut === 'en_retard' ? 'fas fa-exclamation-circle' : 'fas fa-clock';
+                                      dest.statut === 'en_retard' ? 'fas fa-exclamation-circle' : 
+                                      'fas fa-clock';
                     const statusLabel = dest.statut.replace('en_attente', 'En attente')
                                                   .replace('repondu', 'Répondu')
                                                   .replace('en_retard', 'En retard');
 
-                    // Calculer "En attente depuis"
                     let waitingSince = '';
-                    if (dest.statut === 'en_attente' || dest.statut === 'en_retard') {
-                        const creationDate = new Date(data.date);
+                    if ((dest.statut === 'en_attente' || dest.statut === 'en_retard') && data.date) {
+                        const creationDate = new Date(data.date.split('/').reverse().join('-'));
                         const now = new Date();
                         const diffMs = now - creationDate;
-                        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
                         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                        const diffMonths = Math.floor(diffDays / 30);
-                        const remainingDays = diffDays % 30;
-
-                        if (diffHours < 24) {
-                            waitingSince = `En attente depuis ${diffHours} heure${diffHours !== 1 ? 's' : ''}`;
-                        } else if (diffDays < 30) {
+                        if (diffDays > 0) {
                             waitingSince = `En attente depuis ${diffDays} jour${diffDays !== 1 ? 's' : ''}`;
-                        } else {
-                            waitingSince = `En attente depuis ${diffMonths} mois${diffMonths !== 1 ? 's' : ''}${remainingDays > 0 ? ` et ${remainingDays} jour${remainingDays !== 1 ? 's' : ''}` : ''}`;
                         }
                     }
 
-                    // Dernier rappel
+                    let responseInfo = '';
+                    if (dest.statut === 'repondu' && dest.date_reponse) {
+                        responseInfo = `Répondu le ${dest.date_reponse}`;
+                    }
+
                     let lastReminder = '';
                     if ((dest.statut === 'en_attente' || dest.statut === 'en_retard') && dest.rappels && dest.rappels.length > 0) {
                         const latestReminder = dest.rappels.reduce((latest, r) => {
@@ -459,59 +764,66 @@
                         }
                     }
 
-                    // Réponse reçue
-                    let responseDetail = '';
-                    let actions = '';
-                    if (dest.statut === 'repondu') {
-                        responseDetail = dest.response_date ? 
-                            `<p class="text-sm text-gray-600">Réponse reçue le ${new Date(dest.response_date).toLocaleDateString('fr-FR')} à ${new Date(dest.response_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>` : 
-                            `<p class="text-sm text-gray-600">Réponse reçue</p>`;
-                        actions = dest.response_file ? 
-                            `<div class="flex gap-2">
-                                <a href="${dest.response_file}" class="btn btn-download action-btn" target="_blank">
-                                    <i class="fas fa-file-download me-1"></i> Télécharger réponse
-                                </a>
-                            </div>` : 
-                            `<p class="text-sm text-success font-medium">Réponse reçue</p>`;
-                    } else {
-                        responseDetail = `<p class="text-sm text-gray-600">${waitingSince}${lastReminder ? '<br>' + lastReminder : ''}</p>`;
-                        actions = `<div class="flex gap-2">
-                            <button class="btn btn-reminder action-btn" onclick="sendEmailReminder('${lettreId}', '${dest.nom}')">
-                                <i class="fas fa-paper-plane me-1"></i> Email
-                            </button>
-                            <button class="btn btn-link btn-sm text-muted p-0 mt-1" onclick="openRappelsModal('${lettreId}', '${dest.nom}')">
-                                <i class="fas fa-history me-1"></i> Voir rappels
-                            </button>
-                        </div>`;
-                    }
-
                     const regionItem = document.createElement('div');
-                    regionItem.className = `region-card ${statusClass}`;
+                    regionItem.className = `region-card status-${dest.statut.replace('en_', '')}`;
                     regionItem.innerHTML = `
-                        <div class="status-circle ${statusClass}">
-                            <i class="${statusIcon}"></i>
+                        <div class="flex justify-between items-start">
+                            <div class="flex items-center space-x-3">
+                                <div class="status-circle ${statusClass}">
+                                    <i class="${statusIcon} text-sm"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium text-gray-900">${dest.nom}</h4>
+                                    <div class="flex items-center space-x-2 mt-1">
+                                        <span class="status-badge status-${dest.statut.replace('en_', '')}">${statusLabel}</span>
+                                        ${dest.rappels && dest.rappels.length > 0 ? 
+                                            `<span class="reminders-badge">
+                                                <i class="fas fa-bell mr-1"></i>${dest.rappels.length}
+                                            </span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2">
+                                ${dest.statut === 'repondu' && dest.response_file ? `
+                                    <a href="${dest.response_file}" 
+                                       class="action-btn btn-download-response" target="_blank">
+                                        <i class="fas fa-download mr-1"></i>
+                                        Télécharger Réponse
+                                    </a>
+                                ` : (dest.statut === 'en_attente' || dest.statut === 'en_retard') ? `
+                                    <button onclick="sendEmailReminder('${lettreId}', '${dest.nom.replace(/'/g, "\\'")}')" 
+                                            class="action-btn btn-reminder">
+                                        <i class="fas fa-paper-plane mr-1"></i>
+                                        Rappel
+                                    </button>
+                                ` : ''}
+                                ${dest.rappels && dest.rappels.length > 0 ? `
+                                    <button onclick="openRappelsModal('${lettreId}', '${dest.nom.replace(/'/g, "\\'")}')" 
+                                            class="action-btn btn-history">
+                                        <i class="fas fa-history mr-1"></i>
+                                        Historique
+                                    </button>
+                                ` : ''}
+                            </div>
                         </div>
-                        <div class="flex-grow">
-                            <div class="flex justify-between items-center mb-2">
-                                <h6 class="font-semibold text-gray-900 text-sm">${dest.nom}</h6>
-                                <span class="status-badge ${statusClass}">${statusLabel}</span>
-                            </div>
-                            ${responseDetail}
-                            ${dest.rappels && dest.rappels.length > 0 ? 
-                              `<span class="reminders-badge">${dest.rappels.length} rappel${dest.rappels.length > 1 ? 's' : ''}</span>` : ''}
-                            <div class="mt-2">
-                                ${actions}
-                            </div>
-                        </div>`;
+                        ${responseInfo || waitingSince || lastReminder ? `
+                        <div class="mt-3 text-sm text-gray-600 space-y-1">
+                            ${responseInfo ? `<p><i class="fas fa-check-circle text-green-500 mr-1"></i>${responseInfo}</p>` : ''}
+                            ${waitingSince ? `<p><i class="fas fa-clock text-yellow-500 mr-1"></i>${waitingSince}</p>` : ''}
+                            ${lastReminder ? `<p><i class="fas fa-bell text-blue-500 mr-1"></i>${lastReminder}</p>` : ''}
+                        </div>` : ''}
+                    `;
                     regionsContainer.appendChild(regionItem);
                 });
 
-                const templateLink = document.getElementById('detail-template-link');
+                const templateButton = document.getElementById('detail-template-button');
                 if (data.response_template) {
-                    templateLink.href = data.response_template;
-                    templateLink.style.display = 'inline-block';
+                    templateButton.setAttribute('data-url', data.response_template);
+                    templateButton.style.display = 'inline-flex';
+                    templateButton.onclick = () => downloadTemplate(data.response_template);
                 } else {
-                    templateLink.style.display = 'none';
+                    templateButton.style.display = 'none';
+                    templateButton.onclick = null;
                 }
 
                 openModal('detailLettreModal');
@@ -522,14 +834,18 @@
             });
         }
 
-        function sendEmailReminder(lettreId, destination) {
-            fetch(`/lettre/${lettreId}/send_email_reminder/`, {
-                method: 'POST',
+        // Fetch and display rappels for a specific region
+        function openRappelsModal(lettreId, regionName) {
+            selectedLettreId = lettreId;
+            selectedRegion = regionName;
+            document.getElementById('selectedRegionName').textContent = regionName;
+            
+            fetch(`/lettre/${lettreId}/rappels/${encodeURIComponent(regionName)}/`, {
+                method: 'GET',
                 headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value || '{{ csrf_token }}',
                     'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ destination: destination })
+                }
             })
             .then(response => {
                 if (!response.ok) {
@@ -538,23 +854,92 @@
                 return response.json();
             })
             .then(data => {
-                alert(data.message);
-                if (data.success) {
-                    openDetailModal(lettreId); // Refresh modal to update rappels count
-                }
+                const rappelsContainer = document.getElementById('rappelsContainer');
+                rappelsContainer.innerHTML = data.rappels.length ? 
+                    data.rappels.map(r => `
+                        <div class="rappel-item ${r.status}">
+                            <div class="flex items-start">
+                                <div class="mr-3">
+                                    <div class="rappel-icon ${r.type}">
+                                        <i class="fas fa-envelope text-white"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <h4 class="font-medium text-gray-900">${r.type === 'email' ? 'Email' : r.type === 'sms' ? 'SMS' : 'Notification'}</h4>
+                                            <p class="rappel-time mt-1">
+                                                <i class="far fa-clock mr-1"></i>
+                                                ${r.date} à ${r.time}
+                                            </p>
+                                        </div>
+                                        <span class="status-badge ${r.status}">
+                                            ${r.status === 'delivered' ? 'Livré' : r.status === 'sent' ? 'Envoyé' : 'Échec'}
+                                        </span>
+                                    </div>
+                                    <p class="rappel-message mt-2">${r.message}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('') : 
+                    '<div class="text-center py-5 text-gray-500">Aucun rappel enregistré</div>';
+                
+                document.getElementById('selectedRegionEmail').textContent = data.email || 'N/A';
+                openModal('rappelsModal');
             })
             .catch(error => {
-                console.error('Email Error:', error);
-                alert("Erreur lors de l'envoi de l'email: " + error.message);
+                console.error('Erreur:', error);
+                alert('Une erreur est survenue lors du chargement des rappels.');
             });
         }
 
+        // Send email reminder
+        function sendEmailReminder(lettreId, destination) {
+            console.log(`Sending reminder for lettre ${lettreId} to destination ${destination}`);
+            fetch(`/lettre/${lettreId}/send_email_reminder/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value || '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ destination: destination })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(errorData => {
+                        throw new Error(`Erreur réseau ou serveur : ${response.status} - ${errorData.message || 'Erreur inconnue'}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                const notification = document.createElement('div');
+                notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center animate-fade-in';
+                notification.innerHTML = `
+                    <i class="fas fa-check-circle mr-2"></i>
+                    ${data.message}
+                `;
+                document.body.appendChild(notification);
+                setTimeout(() => {
+                    notification.classList.add('animate-fade-out');
+                    setTimeout(() => notification.remove(), 300);
+                }, 3000);
+                // Refresh the detail modal to update rappels_envoyes and other data
+                openDetailModal(lettreId);
+            })
+            .catch(error => {
+                console.error('Erreur lors de l’envoi du rappel:', error);
+                alert(`Erreur lors de l'envoi du rappel: ${error.message}`);
+            });
+        }
+
+        // Send global reminder
         function sendGlobalReminder(lettreId) {
-            if (confirm('Voulez-vous envoyer un rappel global par email à toutes les destinations concernées ?')) {
+            if (confirm('Voulez-vous envoyer un rappel global à toutes les destinations concernées ?')) {
                 fetch(`/lettre/${lettreId}/send_global_reminder/`, {
                     method: 'POST',
                     headers: {
-                        'X-CSRFToken': '{{ csrf_token }}',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value || '{{ csrf_token }}',
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({})
@@ -567,32 +952,31 @@
                 })
                 .then(data => {
                     alert(data.message);
-                    if (data.success) {
-                        window.location.reload(); // Refresh dashboard to update rappels count
+                    if (data.message.includes('succès')) {
+                        window.location.reload();
                     }
                 })
                 .catch(error => {
-                    console.error('Global Reminder Error:', error);
-                    alert("Erreur lors de l'envoi du rappel global");
+                    console.error('Erreur lors de l’envoi du rappel global:', error);
+                    alert('Erreur lors de l’envoi du rappel global: ' + error.message);
                 });
             }
         }
 
+        // Handle form submission for new lettre
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.querySelector('#newLettreModal form');
             if (form) {
                 form.addEventListener('submit', function(event) {
                     event.preventDefault();
-                    const submitButton = form.querySelector('button[type="submit"]');
-                    submitButton.disabled = true;
-
                     const formData = new FormData(form);
-                    fetch("{% url 'lettres:new_lettres' %}", {
+                    fetch(form.action, {
                         method: 'POST',
-                        body: formData,
                         headers: {
-                            'X-CSRFToken': '{{ csrf_token }}'
-                        }
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value || '{{ csrf_token }}',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: formData
                     })
                     .then(response => {
                         if (!response.ok) {
@@ -602,29 +986,19 @@
                     })
                     .then(data => {
                         if (data.success) {
-                            alert('Requête créée avec succès !');
-                            closeModal('newLettreModal');
-                            form.reset();
+                            alert(data.message);
                             window.location.reload();
                         } else {
-                            let errorMessage = 'Erreur lors de l\'enregistrement de la requête.';
-                            if (data.errors) {
-                                errorMessage = 'Erreur : ' + Object.values(data.errors).join('\n');
-                            }
-                            alert(errorMessage);
+                            alert('Erreur : ' + (data.errors || 'Veuillez vérifier les informations saisies.'));
                         }
                     })
                     .catch(error => {
-                        console.error('Erreur:', error);
-                        alert('Une erreur inattendue s\'est produite. Veuillez réessayer.');
-                    })
-                    .finally(() => {
-                        submitButton.disabled = false;
+                        console.error('Erreur lors de la soumission:', error);
+                        alert('Erreur lors de la soumission du formulaire: ' + error.message);
                     });
                 });
             }
         });
     </script>
 </body>
-
 </html>
