@@ -33,6 +33,17 @@
             width: 90%;
             max-width: 800px;
         }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 10px;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -45,41 +56,31 @@
                 <p class="text-blue-200 text-sm">Suivi des correspondances</p>
             </div>
             <nav class="mt-4">
-                {% if user_role == 'super_admin' or user_role == 'admin_saisie' or user_role == 'saisie_ec' %}
-                    <a href="{% url 'lettres:dashboard' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
-                        <i class="fas fa-tachometer-alt mr-3"></i>
-                        Tableau de Bord
+               
+                <a href="{% url 'lettres:dashboard' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    Tableau de Bord
+                </a>
+                <a href="{% url 'lettres:profile' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/profile/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
+                    <i class="fas fa-user-circle mr-3"></i>
+                    Profil
+                </a>
+                <a href="{% url 'lettres:archive' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/archive/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
+                    <i class="fas fa-archive mr-3"></i>
+                    Archives
+                </a>
+                {% if user_role == 'super_admin' %}
+                    <a href="{% url 'lettres:destinations' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/destinations/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
+                        <i class="fas fa-map-marker-alt mr-3"></i>
+                        Destinations
                     </a>
-                    {% if user_role == 'super_admin' %}
-                        <a href="{% url 'lettres:destinations' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/destinations/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
-                            <i class="fas fa-map-marker-alt mr-3"></i>
-                            Destinations
-                        </a>
-                    {% endif %}
-                    {% if user_role == 'super_admin' or user_role == 'admin_saisie' %}
-                        <a href="{% url 'lettres:statistics' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/statistics/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
-                            <i class="fas fa-chart-bar mr-3"></i>
-                            Statistiques
-                        </a>
-                    {% endif %}
-                    <a href="{% url 'lettres:archive' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/archive/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
-                        <i class="fas fa-archive mr-3"></i>
-                        Archives
+                    <a href="{% url 'lettres:statistics' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/statistics/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
+                        <i class="fas fa-chart-bar mr-3"></i>
+                        Statistiques
                     </a>
-                    {% if user_role == 'super_admin' %}
-                        <a href="{% url 'lettres:settings' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/settings/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
-                            <i class="fas fa-cog mr-3"></i>
-                            Paramètres
-                        </a>
-                    {% endif %}
-                {% elif user_role == 'admin_reponse' or user_role == 'saisie_er' %}
-                    <a href="{% url 'lettres:dashboard_Reponse' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/dashboard_reponse/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
-                        <i class="fas fa-tachometer-alt mr-3"></i>
-                        Tableau de Bord
-                    </a>
-                    <a href="{% url 'lettres:archive' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/archive/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
-                        <i class="fas fa-archive mr-3"></i>
-                        Archives
+                    <a href="{% url 'lettres:settings' %}" class="flex items-center px-6 py-3 {% if request.path == '/lettres/settings/' %}bg-blue-900{% else %}hover:bg-blue-700{% endif %}">
+                        <i class="fas fa-cog mr-3"></i>
+                        Paramètres
                     </a>
                 {% endif %}
             </nav>
