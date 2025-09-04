@@ -37,7 +37,6 @@ from django.views.decorators.csrf import csrf_exempt
 
 from celery import shared_task
 
-
 @login_required
 def profile(request):
     try:
@@ -45,19 +44,27 @@ def profile(request):
     except UserProfile.DoesNotExist:
         # Create a default Destination if none exist
         if not Destination.objects.exists():
-            Destination.objects.create(nom='Oujda-Angad', email='default@example.com')
-        # Create a new profile with defaults for saisie_ec
-        default_destination = Destination.objects.first()
-        default_service = 'SGP'  # Default service
+            default_destination = Destination.objects.create(nom='Oujda-Angad', email='default@example.com')
+            logger.info(f"Created default destination: Oujda-Angad")
+        else:
+            default_destination = Destination.objects.first()
+
+        # Determine default role and service
+        default_role = 'super_admin' if request.user.is_superuser else 'saisie_ec'
+        default_service = None if default_role in ['super_admin', 'admin_saisie', 'admin_reponse'] else 'SGP'
+
         profile = UserProfile.objects.create(
             user=request.user,
-            role='super_admin' if request.user.is_superuser else 'saisie_ec',
-            destination=default_destination,
+            role=default_role,
+            destination=default_destination if default_role in ['saisie_ec', 'saisie_er', 'admin_reponse', 'admin_saisie'] else None,
             service=default_service
         )
+        logger.info(f"Created default profile for user {request.user.username} with role {profile.role}, destination {profile.destination}, service {profile.service}")
         messages.info(request, "Un profil par défaut a été créé. Veuillez le mettre à jour si nécessaire.")
+
     context = {
         'user_role': profile.role,
+        'user_profile': profile  # Added for template access
     }
     return render(request, 'menu/profile.html', context)
 
@@ -93,28 +100,34 @@ def dashboard(request):
     except UserProfile.DoesNotExist:
         if request.user.is_superuser:
             profile = UserProfile.objects.create(user=request.user, role='super_admin')
+            logger.info(f"Created super_admin profile for user {request.user.username}")
         else:
+            logger.error(f"User {request.user.username} has no UserProfile configured")
             return render(request, 'error.html', {
                 'error': 'Votre compte n’a pas de profil utilisateur configuré. Contactez l’administrateur.'
-            })
+            }, status=403)
 
     # Redirect admin_reponse and saisie_er to their specific dashboard
     if profile.role in ['admin_reponse', 'saisie_er']:
         return redirect('lettres:dashboard_Reponse')
 
-    # Filter lettres based on role
-    lettres = Lettre.objects.all()
-    if profile.role == 'saisie_ec':
+    # Filter lettres based on role and created_by
+    lettres = Lettre.objects.filter(created_by=request.user)  # Filter by created_by for user-specific letters
+    if profile.role == 'super_admin':
+        lettres = Lettre.objects.all()  # Super admins see all letters
+    elif profile.role == 'saisie_ec':
         lettres = lettres.filter(service=profile.service)
     elif profile.role == 'admin_saisie':
         lettres = lettres.filter(
             Q(destinations=profile.destination) | Q(sent_to_all_destinations=True)
         ).distinct()
 
-    # Update status for each lettre (for super_admin)
-    for lettre in lettres:
-        lettre.update_status()
+    # Update status for each lettre (for super_admin only)
+    if profile.role == 'super_admin':
+        for lettre in lettres:
+            lettre.update_status()
 
+    # Apply filters
     search = request.GET.get('search', '')
     statut_filter = request.GET.get('statut', '')
     categorie_filter = request.GET.get('category', '')
@@ -135,6 +148,7 @@ def dashboard(request):
     lettres_repondues = lettres.filter(statut='repondu')
     lettres_en_retard = lettres.filter(statut='en_retard')
 
+    # Calculate average response time
     avg_response_time = 0
     responded_lettres = lettres_repondues
     if responded_lettres.exists():
@@ -145,20 +159,20 @@ def dashboard(request):
         )
         avg_response_time = total_hours / responded_lettres.count() if responded_lettres.count() > 0 else 0
 
-    today = datetime.now().date()
+    today = date.today()
     lettres_with_progress = []
     for lettre in lettres:
         responded_count = lettre.reponses.filter(statut='repondu').count()
         total_destinations = (
-            lettre.destinations.count() if not lettre.sent_to_all_destinations 
+            lettre.destinations.count() if not lettre.sent_to_all_destinations
             else Destination.objects.count()
         )
         days_overdue = (
-            (today - lettre.deadline).days if lettre.deadline and today > lettre.deadline 
+            (today - lettre.deadline).days if lettre.deadline and today > lettre.deadline
             else 0
         )
         days_until_deadline = (
-            (lettre.deadline - today).days if lettre.deadline and today <= lettre.deadline 
+            (lettre.deadline - today).days if lettre.deadline and today <= lettre.deadline
             else 0
         )
         # For non-super_admin, get the destination-specific status
@@ -166,7 +180,7 @@ def dashboard(request):
         user_response_file_url = None
         if profile.role != 'super_admin':
             if lettre.sent_to_all_destinations or lettre.destinations.filter(id=profile.destination.id).exists():
-                response, created =Response.objects.get_or_create(
+                response, created = Response.objects.get_or_create(
                     lettre=lettre,
                     destination=profile.destination,
                     defaults={'statut': 'en_attente'}
@@ -176,13 +190,13 @@ def dashboard(request):
                     try:
                         user_response_file_url = response.response_file.url
                     except Exception as e:
-                        logger.error("Error accessing response_file URL for lettre %s, destination %s: %s", lettre.id, profile.destination.nom, str(e))
+                        logger.error(f"Error accessing response_file URL for lettre {lettre.id}, destination {profile.destination.nom}: {str(e)}")
                         user_response_file_url = None
                 if created:
-                    logger.info("Created new Response for lettre %s, destination %s with status %s", lettre.id, profile.destination.nom, response.statut)
+                    logger.info(f"Created new Response for lettre {lettre.id}, destination {profile.destination.nom} with status {response.statut}")
             else:
                 user_destination_status = 'en_attente'
-                logger.warning("No access to lettre %s for destination %s", lettre.id, profile.destination.nom)
+                logger.warning(f"No access to lettre {lettre.id} for destination {profile.destination.nom}")
 
         lettres_with_progress.append({
             'lettre': lettre,
@@ -192,7 +206,7 @@ def dashboard(request):
             'days_overdue': days_overdue,
             'days_until_deadline': days_until_deadline,
             'user_destination_status': user_destination_status,
-            'user_response_file_url': user_response_file_url  # Add response file URL for download button
+            'user_response_file_url': user_response_file_url
         })
 
     total_lettres = lettres.count()
@@ -202,7 +216,7 @@ def dashboard(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    form = LettreForm() if profile.role in ['super_admin', 'admin_saisie', 'saisie_ec'] else None
+    form = LettreForm(user_profile=profile) if profile.role in ['super_admin', 'admin_saisie', 'saisie_ec'] else None
 
     context = {
         'form': form,
@@ -223,7 +237,7 @@ def dashboard(request):
     }
     return render(request, 'create_requet/dashboard.html', context)
 
-    
+
 
 @login_required
 @csrf_exempt
@@ -457,7 +471,7 @@ def new_lettres(request):
             return JsonResponse({'success': False, 'errors': 'Votre compte n’a pas de profil utilisateur configuré. Contactez l’administrateur.'}, status=400)
         return render(request, 'error.html', {
             'error': 'Votre compte n’a pas de profil utilisateur configuré. Contactez l’administrateur.'
-        })
+        }, status=403)
 
     if profile.role not in ['super_admin', 'admin_saisie', 'saisie_ec', 'directeur_regional']:
         logger.warning(f"User {request.user.username} with role {profile.role} attempted to access new_lettres")
@@ -474,16 +488,19 @@ def new_lettres(request):
             return JsonResponse({'success': False, 'errors': 'Duplicate submission detected.'}, status=400)
         cache.set(cache_key, True, timeout=30)
 
-    if not profile.destination or not profile.destination.nom:
+    # Only set default destination if none exists and user is not super_admin
+    if not profile.destination and profile.role != 'super_admin':
         if Destination.objects.exists():
             profile.destination = Destination.objects.first()
             logger.info(f"Set default destination to {profile.destination.nom} for user {request.user.username}")
+            profile.save()
         else:
             profile.destination = Destination.objects.create(nom='Oujda-Angad', email='default@example.com')
             logger.info(f"Created and set default destination Oujda-Angad for user {request.user.username}")
-        profile.save()
+            profile.save()
 
-    if not profile.service:
+    # Only set default service for saisie_ec/saisie_er if none exists
+    if not profile.service and profile.role in ['saisie_ec', 'saisie_er']:
         profile.service = 'SGP'
         profile.save()
         logger.info(f"Set default service to SGP for user {request.user.username}")
@@ -492,7 +509,14 @@ def new_lettres(request):
         form = LettreForm(request.POST, request.FILES, user_profile=profile)
         if form.is_valid():
             try:
-                lettre = form.save()
+                # Save the form but don't commit to the database yet
+                lettre = form.save(commit=False)
+                # Set the created_by field to the current user
+                lettre.created_by = request.user
+                # Save the Lettre instance to the database
+                lettre.save()
+                # Save the many-to-many relationships (destinations)
+                form.save_m2m()
                 destinations = Destination.objects.all() if lettre.sent_to_all_destinations else lettre.destinations.all()
                 for destination in destinations:
                     Response.objects.get_or_create(
@@ -527,8 +551,8 @@ def new_lettres(request):
                     messages.error(request, f"{field}: {error}")
     else:
         initial = {
-            'destinations': [profile.destination] if profile.role in ['admin_saisie', 'saisie_ec', 'directeur_regional'] else [],
-            'service': profile.service if profile.role == 'saisie_ec' else 'SGP'
+            'destinations': [profile.destination.id] if profile.destination and profile.role in ['admin_saisie', 'saisie_ec', 'directeur_regional'] else [],
+            'service': profile.service if profile.service and profile.role in ['saisie_ec', 'saisie_er'] else None,
         }
         form = LettreForm(initial=initial, user_profile=profile)
 
@@ -545,6 +569,27 @@ def new_lettres(request):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -553,35 +598,39 @@ def submit_response(request, lettre_id):
     try:
         profile = request.user.userprofile
     except UserProfile.DoesNotExist:
-        logger.error("UserProfile does not exist for user: %s", request.user.username)
-        return JsonResponse({'success': False, 'message': 'Votre compte n’a pas de profil utilisateur configuré.'})
+        logger.error(f"UserProfile does not exist for user: {request.user.username}")
+        return JsonResponse({'success': False, 'message': 'Votre compte n’a pas de profil utilisateur configuré.'}, status=403)
 
     if profile.role not in ['admin_reponse', 'saisie_er']:
-        logger.error("Unauthorized access by user: %s, role: %s", request.user.username, profile.role)
-        return JsonResponse({'success': False, 'message': "Vous n'êtes pas autorisé à répondre aux requêtes."})
+        logger.error(f"Unauthorized access by user: {request.user.username}, role: {profile.role}")
+        return JsonResponse({'success': False, 'message': "Vous n'êtes pas autorisé à répondre aux requêtes."}, status=403)
 
     destination = profile.destination
     if not destination:
-        logger.error("No destination for user: %s", request.user.username)
-        return JsonResponse({'success': False, 'message': 'Aucune destination associée à votre profil.'})
+        logger.error(f"No destination for user: {request.user.username}")
+        return JsonResponse({'success': False, 'message': 'Aucune destination associée à votre profil.'}, status=403)
 
     lettre = get_object_or_404(Lettre, id=lettre_id)
     if profile.role == 'saisie_er' and lettre.service != profile.service:
-        logger.error("Service mismatch for user: %s, lettre: %s", request.user.username, lettre.id)
-        return JsonResponse({'success': False, 'message': "Vous ne pouvez répondre qu'aux requêtes de votre service."})
+        logger.error(f"Service mismatch for user: {request.user.username}, lettre: {lettre.id}")
+        return JsonResponse({'success': False, 'message': "Vous ne pouvez répondre qu'aux requêtes de votre service."}, status=403)
 
     if not (lettre.destinations.filter(id=destination.id).exists() or lettre.sent_to_all_destinations):
-        logger.error("Unauthorized lettre access by user: %s, lettre: %s", request.user.username, lettre.id)
-        return JsonResponse({'success': False, 'message': "Vous n'êtes pas autorisé à répondre à cette requête."})
+        logger.error(f"Unauthorized lettre access by user: {request.user.username}, lettre: {lettre.id}")
+        return JsonResponse({'success': False, 'message': "Vous n'êtes pas autorisé à répondre à cette requête."}, status=403)
 
-    response, created = Response.objects.get_or_create(
-        lettre=lettre,
-        destination=destination,
-        user=None if profile.role == 'admin_reponse' else request.user,
-        defaults={'statut': 'en_attente'}
-    )
+    # For GET requests, retrieve existing response or initialize empty form
+    response = Response.objects.filter(lettre=lettre, destination=destination).first()
 
     if request.method == 'POST':
+        # For POST requests, create or update the response
+        if not response:
+            response = Response(
+                lettre=lettre,
+                destination=destination,
+                user=None if profile.role == 'admin_reponse' else request.user,
+                statut='en_attente'
+            )
         form = ResponseForm(request.POST, request.FILES, instance=response, lettre=lettre)
         if form.is_valid():
             response = form.save(commit=False)
@@ -592,20 +641,20 @@ def submit_response(request, lettre_id):
                 response.date_reponse = datetime.now().date()
                 response.temps_reponse = math.floor((datetime.now().date() - lettre.date).days * 24)
             else:
-                response.statut = 'en_attente'  # Keep en_attente if no file
+                response.statut = 'en_attente'
             response.user = None if profile.role == 'admin_reponse' else request.user
             try:
                 response.save()
-                logger.info("Response saved: ID=%s, File=%s", response.id, response.response_file.path if response.response_file else None)
+                logger.info(f"Response saved: ID={response.id}, File={response.response_file.path if response.response_file else None}")
             except Exception as e:
-                logger.error("Failed to save response: %s", str(e))
+                logger.error(f"Failed to save response: {str(e)}")
                 return JsonResponse({'success': False, 'message': f'Erreur lors de l\'enregistrement: {str(e)}'}, status=500)
 
             # Update lettre status
             expected_response_count = Destination.objects.count() if lettre.sent_to_all_destinations else lettre.destinations.count()
             responded_count = lettre.reponses.filter(statut='repondu').count()
-            logger.debug("Lettre: %s, Expected: %d, Responded: %d", lettre.id, expected_response_count, responded_count)
-            if responded_count >= expected_response_count:
+            logger.debug(f"Lettre: {lettre.id}, Expected: {expected_response_count}, Responded: {responded_count}")
+            if responded_count >= expected_response_count and expected_response_count > 0:
                 lettre.statut = 'repondu'
             elif lettre.is_overdue:
                 lettre.statut = 'en_retard'
@@ -613,9 +662,9 @@ def submit_response(request, lettre_id):
                 lettre.statut = 'en_attente'
             try:
                 lettre.save()
-                logger.info("Lettre status updated: %s, new status: %s", lettre.id, lettre.statut)
+                logger.info(f"Lettre status updated: {lettre.id}, new status: {lettre.statut}")
             except Exception as e:
-                logger.error("Failed to save lettre: %s", str(e))
+                logger.error(f"Failed to save lettre: {str(e)}")
                 return JsonResponse({'success': False, 'message': f'Erreur lors de la mise à jour de la lettre: {str(e)}'}, status=500)
 
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -627,7 +676,7 @@ def submit_response(request, lettre_id):
             messages.success(request, 'Réponse enregistrée avec succès.')
             return redirect('lettres:dashboard_Reponse')
         else:
-            logger.error("Form errors: %s", form.errors.as_json())
+            logger.error(f"Form errors: {form.errors.as_json()}")
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': False,
@@ -638,6 +687,7 @@ def submit_response(request, lettre_id):
                 for error in errors:
                     messages.error(request, f"{field}: {error}")
     else:
+        # For GET requests, initialize form with existing response (if any)
         form = ResponseForm(instance=response, lettre=lettre)
 
     return render(request, 'response_requet/response_form.html', {
