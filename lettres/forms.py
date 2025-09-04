@@ -22,12 +22,43 @@ class LoginForm(AuthenticationForm):
             'placeholder': 'Mot de passe'
         })
     )
-
-
+    
 class LettreForm(forms.ModelForm):
+    def __init__(self, *args, user_profile=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user_profile:
+            logger.debug(f"User profile role: {user_profile.role}, service: {user_profile.service}, destination: {user_profile.destination}")
+            # Set initial service with fallback
+            valid_services = dict(Lettre.SERVICE_CHOICES)
+            if user_profile.service and user_profile.service in valid_services:
+                self.fields['service'].initial = user_profile.service
+            else:
+                self.fields['service'].initial = 'SGP'
+                logger.warning(f"Invalid or missing service for user {user_profile.user.username}, defaulting to SGP")
+            # Set initial destination with fallback
+            if user_profile.role in ['saisie_ec', 'admin_saisie', 'directeur_regional']:
+                if user_profile.destination and hasattr(user_profile.destination, 'id'):
+                    self.fields['destinations'].initial = [user_profile.destination.id]
+                    self.fields['destinations'].disabled = True
+                    self.fields['destinations'].widget.attrs['disabled'] = 'disabled'
+                    self.fields['destinations'].widget = forms.HiddenInput()
+                    self.fields['sent_to_all_destinations'].disabled = True
+                    self.fields['sent_to_all_destinations'].widget.attrs['disabled'] = 'disabled'
+                    logger.debug(f"Destinations field disabled and set to {user_profile.destination} for {user_profile.role} user")
+                else:
+                    default_destination = Destination.objects.first()
+                    if default_destination:
+                        self.fields['destinations'].initial = [default_destination.id]
+                        logger.warning(f"No destination for user {user_profile.user.username}, defaulting to {default_destination}")
+                    else:
+                        logger.error("No destinations available to set as default")
+                        raise ValidationError("Aucune destination disponible pour configuration.")
+            else:
+                logger.debug("Service and destinations fields enabled for other users")
+
     destinations = forms.ModelMultipleChoiceField(
         queryset=Destination.objects.all(),
-        widget=forms.CheckboxSelectMultiple(attrs={'class': 'destination-checkbox'}),
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'destination-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'}),
         required=False
     )
     category = forms.ChoiceField(
@@ -103,12 +134,16 @@ class LettreForm(forms.ModelForm):
         destinations = cleaned_data.get('destinations')
         sent_to_all_destinations = cleaned_data.get('sent_to_all_destinations')
 
+        # Ensure at least one destination is selected or sent_to_all_destinations is checked
         if not sent_to_all_destinations and not destinations:
+            logger.error("Validation failed: No destinations selected and sent_to_all_destinations not checked")
             raise ValidationError("Veuillez sélectionner au moins une destination ou cocher 'Envoyé à toutes les destinations'.")
 
+        # Validate MARITIME service restriction
         if service == 'MARITIME' and not sent_to_all_destinations:
             valid_destinations = Destination.objects.filter(nom__in=['Nador', 'Driouch'])
             if not all(destination in valid_destinations for destination in destinations):
+                logger.error("Validation failed: MARITIME service selected with invalid destinations")
                 raise ValidationError("Le service MARITIME est uniquement disponible pour Nador ou Driouch.")
 
         return cleaned_data
@@ -126,10 +161,9 @@ class LettreForm(forms.ModelForm):
             else:
                 instance.destinations.set(destinations)
             instance.save()
-
         return instance
 
-
+        
 class DestinationForm(forms.ModelForm):
     class Meta:
         model = Destination
@@ -312,7 +346,7 @@ class UserCreationForm(BaseUserCreationForm):
         model = User
         fields = ['username', 'email', 'password1', 'password2', 'role', 'destination', 'service']
         widgets = {
-            'username': forms.TextInput(attrs={'class': 'w-full border border-gray-300 rounded-md p-2', 'placeholder': 'Nom d’utilisateur'}),
+            'username': forms.TextInput(attrs={'class': 'w-full border border-gray-300 rounded-md p-2', 'placeholder': "Nom d'utilisateur"}),
             'password1': forms.PasswordInput(attrs={'class': 'w-full border border-gray-300 rounded-md p-2', 'placeholder': 'Mot de passe'}),
             'password2': forms.PasswordInput(attrs={'class': 'w-full border border-gray-300 rounded-md p-2', 'placeholder': 'Confirmation du mot de passe'}),
         }
@@ -352,6 +386,7 @@ class UserCreationForm(BaseUserCreationForm):
                 raise ValidationError("Veuillez sélectionner une destination pour le rôle de Directeur Régional.")
             if service:
                 raise ValidationError("Le rôle de Directeur Régional ne peut pas être associé à un service.")
+            cleaned_data['service'] = None  # Explicitly set service to None
             if destination and UserProfile.objects.filter(role='admin_saisie', destination=destination).exists():
                 raise ValidationError(f"Un Directeur Régional est déjà assigné à la destination {destination.nom}.")
 
@@ -362,7 +397,7 @@ class UserCreationForm(BaseUserCreationForm):
         user.email = self.cleaned_data['email']
         role = self.cleaned_data['role']
         destination = self.cleaned_data['destination']
-        service = self.cleaned_data['service']
+        service = self.cleaned_data['service'] if role in ['saisie_ec', 'saisie_er'] else None
 
         if commit:
             user.save()
@@ -370,6 +405,6 @@ class UserCreationForm(BaseUserCreationForm):
                 user=user,
                 role=role,
                 destination=destination if role in ['saisie_ec', 'saisie_er', 'admin_reponse', 'admin_saisie'] else None,
-                service=service if role in ['saisie_ec', 'saisie_er'] else None
+                service=service
             )
         return user
