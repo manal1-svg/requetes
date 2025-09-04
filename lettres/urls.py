@@ -25,5 +25,10 @@ urlpatterns = [
     path('dashboard/response/', views.dashboard_Reponse, name='dashboard_Reponse'),
     path('<int:lettre_id>/submit_response/', views.submit_response, name='submit_response'),
     path('response/<int:response_id>/', views.response_detail, name='response_detail'),
+    path('profile/', views.profile, name='profile'),
+    path('response/<int:response_id>/detail/', views.response_detail, name='response_detail'),
+   
+    path('submit_response/<int:lettre_id>/', views.submit_response, name='submit_response'),
+    path('dashboard_Reponse/', views.dashboard_Reponse, name='dashboard_Reponse'),
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
