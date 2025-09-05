@@ -22,40 +22,7 @@ class LoginForm(AuthenticationForm):
             'placeholder': 'Mot de passe'
         })
     )
-    
 class LettreForm(forms.ModelForm):
-    def __init__(self, *args, user_profile=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        if user_profile:
-            logger.debug(f"User profile role: {user_profile.role}, service: {user_profile.service}, destination: {user_profile.destination}")
-            # Set initial service with fallback
-            valid_services = dict(Lettre.SERVICE_CHOICES)
-            if user_profile.service and user_profile.service in valid_services:
-                self.fields['service'].initial = user_profile.service
-            else:
-                self.fields['service'].initial = 'SGP'
-                logger.warning(f"Invalid or missing service for user {user_profile.user.username}, defaulting to SGP")
-            # Set initial destination with fallback
-            if user_profile.role in ['saisie_ec', 'admin_saisie', 'directeur_regional']:
-                if user_profile.destination and hasattr(user_profile.destination, 'id'):
-                    self.fields['destinations'].initial = [user_profile.destination.id]
-                    self.fields['destinations'].disabled = True
-                    self.fields['destinations'].widget.attrs['disabled'] = 'disabled'
-                    self.fields['destinations'].widget = forms.HiddenInput()
-                    self.fields['sent_to_all_destinations'].disabled = True
-                    self.fields['sent_to_all_destinations'].widget.attrs['disabled'] = 'disabled'
-                    logger.debug(f"Destinations field disabled and set to {user_profile.destination} for {user_profile.role} user")
-                else:
-                    default_destination = Destination.objects.first()
-                    if default_destination:
-                        self.fields['destinations'].initial = [default_destination.id]
-                        logger.warning(f"No destination for user {user_profile.user.username}, defaulting to {default_destination}")
-                    else:
-                        logger.error("No destinations available to set as default")
-                        raise ValidationError("Aucune destination disponible pour configuration.")
-            else:
-                logger.debug("Service and destinations fields enabled for other users")
-
     destinations = forms.ModelMultipleChoiceField(
         queryset=Destination.objects.all(),
         widget=forms.CheckboxSelectMultiple(attrs={'class': 'destination-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'}),
@@ -88,7 +55,7 @@ class LettreForm(forms.ModelForm):
         fields = [
             'subject', 'category', 'date', 'deadline', 'destinations',
             'sent_to_all_destinations', 'service', 'format', 'priority',
-            'description', 'image_file', 'response_template'
+            'description', 'image_file', 'response_template', 'created_by'
         ]
         widgets = {
             'subject': forms.TextInput(attrs={
@@ -126,7 +93,43 @@ class LettreForm(forms.ModelForm):
                 'class': 'hidden',
                 'id': 'template-upload'
             }),
+            'created_by': forms.HiddenInput(),
         }
+
+    def __init__(self, *args, user_profile=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user_profile:
+            logger.debug(f"User profile role: {user_profile.role}, service: {user_profile.service}, destination: {user_profile.destination}")
+            # Set initial service with fallback
+            valid_services = dict(Lettre.SERVICE_CHOICES)
+            if user_profile.service and user_profile.service in valid_services:
+                self.fields['service'].initial = user_profile.service
+            else:
+                self.fields['service'].initial = 'SGP'
+                logger.warning(f"Invalid or missing service for user {user_profile.user.username}, defaulting to SGP")
+            # Set initial destination with fallback
+            if user_profile.role in ['saisie_ec', 'admin_saisie', 'directeur_regional']:
+                if user_profile.destination and hasattr(user_profile.destination, 'id'):
+                    self.fields['destinations'].initial = [user_profile.destination.id]
+                    self.fields['destinations'].disabled = True
+                    self.fields['destinations'].widget.attrs['disabled'] = 'disabled'
+                    self.fields['destinations'].widget = forms.HiddenInput()
+                    self.fields['sent_to_all_destinations'].disabled = True
+                    self.fields['sent_to_all_destinations'].widget.attrs['disabled'] = 'disabled'
+                    logger.debug(f"Destinations field disabled and set to {user_profile.destination} for {user_profile.role} user")
+                else:
+                    default_destination = Destination.objects.first()
+                    if default_destination:
+                        self.fields['destinations'].initial = [default_destination.id]
+                        logger.warning(f"No destination for user {user_profile.user.username}, defaulting to {default_destination}")
+                    else:
+                        logger.error("No destinations available to set as default")
+                        raise ValidationError("Aucune destination disponible pour configuration.")
+            else:
+                logger.debug("Service and destinations fields enabled for other users")
+            # Set initial value for created_by
+            if user_profile.user:
+                self.fields['created_by'].initial = user_profile.user
 
     def clean(self):
         cleaned_data = super().clean()
