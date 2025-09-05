@@ -260,12 +260,7 @@ def dashboard(request):
     }
     return render(request, 'create_requet/dashboard.html', context)
 
-
-
-@login_required
-@csrf_exempt
 def lettre_detail(request, pk):
-
     try:
         profile = request.user.userprofile
     except UserProfile.DoesNotExist:
@@ -279,12 +274,15 @@ def lettre_detail(request, pk):
     authorized = False
     if profile.role == 'super_admin':
         authorized = True
-    elif profile.role == 'saisie_ec':
-        authorized = lettre.service == profile.service
-    elif profile.role == 'admin_saisie':
+    elif profile.role in ['saisie_er', 'saisie_ec']:
+        authorized = lettre.service == profile.service and (
+            lettre.destinations.filter(id=profile.destination.id).exists() or lettre.sent_to_all_destinations
+        )
+    elif profile.role in ['admin_saisie', 'admin_reponse', 'directeur_regional']:
         authorized = lettre.destinations.filter(id=profile.destination.id).exists() or lettre.sent_to_all_destinations
     else:
-        authorized = lettre.destinations.filter(id=profile.destination.id).exists() or lettre.sent_to_all_destinations
+        logger.error("Unknown role %s for user %s", profile.role, request.user.username)
+        return JsonResponse({'success': False, 'message': 'Rôle utilisateur non reconnu.'}, status=403)
 
     if not authorized:
         logger.error("Unauthorized access to lettre %s by user %s (role: %s)", pk, request.user.username, profile.role)
@@ -293,15 +291,20 @@ def lettre_detail(request, pk):
     # Filter destinations based on role
     if profile.role == 'super_admin':
         destinations = Destination.objects.all() if lettre.sent_to_all_destinations else lettre.destinations.all()
-    elif profile.role == 'admin_saisie':
-        destinations = [profile.destination] if (lettre.sent_to_all_destinations or lettre.destinations.filter(id=profile.destination.id).exists()) else []
-    elif profile.role == 'saisie_ec':
-        destinations = lettre.destinations.all() if lettre.sent_to_all_destinations else lettre.destinations.filter(id=profile.destination.id)
     else:
-        destinations = [profile.destination] if (lettre.sent_to_all_destinations or lettre.destinations.filter(id=profile.destination.id).exists()) else []
+        # Restrict to user's destination only
+        destinations = [profile.destination] if (
+            lettre.sent_to_all_destinations or lettre.destinations.filter(id=profile.destination.id).exists()
+        ) else []
+
+    # Additional service filter for saisie_er and saisie_ec
+    if profile.role in ['saisie_er', 'saisie_ec'] and destinations:
+        if lettre.service != profile.service:
+            destinations = []
 
     if not destinations:
         logger.warning("No authorized destinations found for lettre %s for user %s (role: %s)", pk, request.user.username, profile.role)
+        return JsonResponse({'success': True, 'destinations': []}, status=200)
 
     # Prepare destinations data and count sent reminders
     destinations_data = []
@@ -314,7 +317,7 @@ def lettre_detail(request, pk):
                 defaults={'statut': 'en_attente'}
             )
             rappels = response.rappels.filter(status='sent').values('type', 'date', 'time', 'message', 'status')
-            total_rappels_envoyes += rappels.count()  # Count sent reminders
+            total_rappels_envoyes += rappels.count()
             response_file_url = response.response_file.url if response.response_file else None
 
             destinations_data.append({
@@ -336,31 +339,38 @@ def lettre_detail(request, pk):
     # Handle image_file
     image_url = lettre.image_file.url if hasattr(lettre, 'image_file') and lettre.image_file else None
 
+    # Prepare service data
+    service_data = lettre.get_service_display() if hasattr(lettre, 'get_service_display') else (lettre.service or 'N/A')
+
+    # Construct response data
+    data = {
+        'success': True,
+        'subject': lettre.subject,
+        'category': lettre.category,
+        'date': lettre.date.strftime('%d/%m/%Y') if lettre.date else None,
+        'deadline': lettre.deadline.strftime('%d/%m/%Y') if lettre.deadline else None,
+        'priority': lettre.priority,
+        'get_priority_display': lettre.get_priority_display(),
+        'statut': lettre.statut,
+        'get_statut_display': lettre.get_statut_display(),
+        'destinations': destinations_data,
+        'sent_to_all_destinations': lettre.sent_to_all_destinations,
+        'days_overdue': days_overdue,
+        'days_until_deadline': days_until_deadline,
+        'rappels_envoyes': total_rappels_envoyes,
+        'response_template': lettre.response_template.url if lettre.response_template else None,
+        'image': image_url,
+    }
+
+    # Include service only for super_admin, admin_saisie, admin_reponse
+    if profile.role in ['super_admin', 'admin_saisie', 'admin_reponse']:
+        data['service'] = service_data
+
     try:
-        data = {
-            'success': True,
-            'subject': lettre.subject,
-            'category': lettre.category,
-            'date': lettre.date.strftime('%d/%m/%Y') if lettre.date else None,
-            'deadline': lettre.deadline.strftime('%d/%m/%Y') if lettre.deadline else None,
-            'priority': lettre.priority,
-            'get_priority_display': lettre.get_priority_display(),
-            'statut': lettre.statut,
-            'get_statut_display': lettre.get_statut_display(),
-            'service': lettre.service if isinstance(lettre.service, str) else str(lettre.service),
-            'destinations': destinations_data,
-            'sent_to_all_destinations': lettre.sent_to_all_destinations,
-            'days_overdue': days_overdue,
-            'days_until_deadline': days_until_deadline,
-            'rappels_envoyes': total_rappels_envoyes,  # Use calculated count
-            'response_template': lettre.response_template.url if lettre.response_template else None,
-            'image': image_url,
-        }
+        return JsonResponse(data, status=200)
     except Exception as e:
         logger.error("Error constructing response data for lettre %s: %s", pk, str(e))
         return JsonResponse({'success': False, 'message': 'Erreur interne lors de la construction des données.'}, status=500)
-
-    return JsonResponse(data, status=200)
 
 
 @login_required
