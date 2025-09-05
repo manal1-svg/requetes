@@ -111,23 +111,24 @@ def dashboard(request):
     if profile.role in ['admin_reponse', 'saisie_er']:
         return redirect('lettres:dashboard_Reponse')
 
-    # Filter lettres based on role and created_by
-    lettres = Lettre.objects.filter(created_by=request.user)  # Filter by created_by for user-specific letters
+    # Filter lettres based on role
     if profile.role == 'super_admin':
         lettres = Lettre.objects.all()  # Super admins see all letters
-    elif profile.role == 'saisie_ec':
-        lettres = lettres.filter(service=profile.service)
-    elif profile.role == 'admin_saisie':
-        lettres = lettres.filter(
+    else:
+        # Filter by destination (either directly assigned or sent to all)
+        lettres = Lettre.objects.filter(
             Q(destinations=profile.destination) | Q(sent_to_all_destinations=True)
         ).distinct()
+        # For saisie_ec, further filter by service
+        if profile.role == 'saisie_ec':
+            lettres = lettres.filter(service=profile.service)
 
     # Update status for each lettre (for super_admin only)
     if profile.role == 'super_admin':
         for lettre in lettres:
             lettre.update_status()
 
-    # Apply filters
+    # Apply additional filters
     search = request.GET.get('search', '')
     statut_filter = request.GET.get('statut', '')
     categorie_filter = request.GET.get('category', '')
@@ -144,24 +145,44 @@ def dashboard(request):
             Q(destinations__id=destination_filter) | Q(sent_to_all_destinations=True)
         ).distinct()
 
+    # Calculate stats for cards
     lettres_en_attente = lettres.filter(statut='en_attente')
     lettres_repondues = lettres.filter(statut='repondu')
     lettres_en_retard = lettres.filter(statut='en_retard')
+
+    # Calculate "En Cours" for saisie_ec and admin_saisie (letters awaiting response for their destination)
+    lettres_en_cours = 0
+    if profile.role in ['saisie_ec', 'admin_saisie']:
+        lettres_en_cours = sum(
+            1 for lettre in lettres
+            if Response.objects.filter(
+                lettre=lettre,
+                destination=profile.destination,
+                statut__in=['en_attente', 'en_retard']
+            ).exists()
+        )
 
     # Calculate average response time
     avg_response_time = 0
     responded_lettres = lettres_repondues
     if responded_lettres.exists():
         total_hours = sum(
-            (lettre.reponses.first().temps_reponse for lettre in responded_lettres
-             if lettre.reponses.exists() and lettre.reponses.first().temps_reponse is not None),
+            (lettre.reponses.filter(destination=profile.destination).first().temps_reponse
+             for lettre in responded_lettres
+             if lettre.reponses.filter(destination=profile.destination).exists() and
+                lettre.reponses.filter(destination=profile.destination).first().temps_reponse is not None),
             0
         )
-        avg_response_time = total_hours / responded_lettres.count() if responded_lettres.count() > 0 else 0
+        responded_count = sum(
+            1 for lettre in responded_lettres
+            if lettre.reponses.filter(destination=profile.destination).exists()
+        )
+        avg_response_time = total_hours / responded_count if responded_count > 0 else 0
 
     today = date.today()
     lettres_with_progress = []
     for lettre in lettres:
+        # Count responses for all destinations
         responded_count = lettre.reponses.filter(statut='repondu').count()
         total_destinations = (
             lettre.destinations.count() if not lettre.sent_to_all_destinations
@@ -175,7 +196,7 @@ def dashboard(request):
             (lettre.deadline - today).days if lettre.deadline and today <= lettre.deadline
             else 0
         )
-        # For non-super_admin, get the destination-specific status
+        # Get the response status for the user's specific destination
         user_destination_status = None
         user_response_file_url = None
         if profile.role != 'super_admin':
@@ -183,7 +204,7 @@ def dashboard(request):
                 response, created = Response.objects.get_or_create(
                     lettre=lettre,
                     destination=profile.destination,
-                    defaults={'statut': 'en_attente'}
+                    defaults={'statut': 'en_attente', 'user': request.user if profile.role == 'saisie_ec' else None}
                 )
                 user_destination_status = response.statut
                 if response.response_file:
@@ -206,7 +227,8 @@ def dashboard(request):
             'days_overdue': days_overdue,
             'days_until_deadline': days_until_deadline,
             'user_destination_status': user_destination_status,
-            'user_response_file_url': user_response_file_url
+            'user_response_file_url': user_response_file_url,
+            'created_by': lettre.created_by.username if lettre.created_by else 'Unknown'
         })
 
     total_lettres = lettres.count()
@@ -225,6 +247,7 @@ def dashboard(request):
         'lettres_en_attente': lettres_en_attente,
         'lettres_repondues': lettres_repondues,
         'lettres_en_retard': lettres_en_retard,
+        'lettres_en_cours': lettres_en_cours,  # New context variable for En Cours
         'temps_moyen_reponse': round(avg_response_time, 1),
         'categories': Lettre.objects.values_list('category', flat=True).distinct(),
         'destinations': Destination.objects.all(),
@@ -342,11 +365,10 @@ def lettre_detail(request, pk):
 
 @login_required
 def dashboard_Reponse(request):
-   
     try:
         profile = request.user.userprofile
     except UserProfile.DoesNotExist:
-        logger.error("UserProfile does not exist for user: %s", request.user.username)
+        logger.error(f"UserProfile does not exist for user: {request.user.username}")
         messages.error(request, "Votre compte n’a pas de profil utilisateur configuré. Contactez l’administrateur.")
         return render(request, 'error.html', {
             'error': 'Votre compte n’a pas de profil utilisateur configuré. Contactez l’administrateur.',
@@ -355,15 +377,14 @@ def dashboard_Reponse(request):
 
     # Restrict access to authorized roles
     if profile.role not in ['admin_reponse', 'saisie_er']:
-        logger.error("Unauthorized access to dashboard by user: %s, role: %s", 
-                     request.user.username, profile.role)
+        logger.error(f"Unauthorized access to dashboard by user: {request.user.username}, role: {profile.role}")
         messages.error(request, "Vous n’êtes pas autorisé à accéder à cette interface.")
         return redirect('lettres:dashboard')
 
     # Ensure destination exists
     destination = profile.destination
     if not destination:
-        logger.error("No destination associated with user: %s", request.user.username)
+        logger.error(f"No destination associated with user: {request.user.username}")
         messages.error(request, "Aucune destination associée à votre profil.")
         return render(request, 'response_requet/user_dashboard.html', {
             'error': 'Aucune destination associée à votre profil.',
@@ -371,12 +392,10 @@ def dashboard_Reponse(request):
             'csrf_token': get_token(request),
         }, status=403)
 
-    # Fetch responses with related lettre data for efficiency
+    # Fetch responses for the user's destination
     responses = Response.objects.filter(destination=destination).select_related('lettre')
     if profile.role == 'saisie_er':
         responses = responses.filter(lettre__service=profile.service)
-    
-    logger.debug("Responses found for user %s: %d", request.user.username, responses.count())
 
     # Update overdue responses
     today = date.today()
@@ -427,6 +446,7 @@ def dashboard_Reponse(request):
             'response': response,
             'responded_count': Response.objects.filter(lettre=response.lettre, statut='repondu').count(),
             'total_destinations': Response.objects.filter(lettre=response.lettre).count(),
+            'created_by': response.lettre.created_by.username if response.lettre.created_by else 'Unknown'
         }
         for response in filtered_responses
     ]
