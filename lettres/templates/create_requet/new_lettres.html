@@ -23,8 +23,9 @@
         </div>
     </div>
 
-    <form method="post" enctype="multipart/form-data" action="{% url 'new_lettres' %}" onsubmit="return handleSubmit(event)" class="space-y-6 p-6">
+    <form method="post" enctype="multipart/form-data" action="{% url 'lettres:new_lettres' %}" id="new-lettre-form" class="space-y-6 p-6">
         {% csrf_token %}
+        <input type="hidden" name="submission_id" id="submission-id">
 
         <!-- Basic Info Section -->
         <div id="basic-info" class="form-section">
@@ -62,6 +63,26 @@
                 <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
                     <div class="space-y-4">
                         <div class="space-y-2">
+                            {% if user_role == 'saisie_ec' or user_role == 'admin_saisie' %}
+                            <!-- Predefined destination for saisie_ec or admin_saisie users -->
+                            <label class="block text-sm font-medium text-gray-700">Destination concernée <span class="text-red-500">*</span></label>
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       name="destinations_display" 
+                                       id="id_destinations_{{ user_profile.destination.id|default:'unknown' }}" 
+                                       checked="checked" 
+                                       disabled="disabled" 
+                                       class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 opacity-50 cursor-not-allowed">
+                                <label for="id_destinations_{{ user_profile.destination.id|default:'unknown' }}" class="ml-2 text-sm font-semibold text-gray-900">
+                                    {{ request.user.userprofile.destination.nom|default:"N/A" }}
+                                </label>
+                                <!-- Hidden input to ensure submission -->
+                                <input type="hidden" 
+                                       name="destinations" 
+                                       value="{{ user_profile.destination.id|default:'' }}">
+                            </div>
+                            {% else %}
+                            <!-- Interactive destinations for non-restricted users -->
                             <div class="flex justify-between items-center">
                                 <label class="block text-sm font-medium text-gray-700">Destinations concernées <span class="text-red-500">*</span></label>
                                 <div class="flex items-center space-x-2">
@@ -79,30 +100,40 @@
                                 </div>
                                 {% endfor %}
                             </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
 
                 <!-- Services Card -->
-                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
-                    <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Service concerné <span class="text-red-500">*</span></label>
-                        <div id="services-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
-                            {% for radio in form.service %}
-                            <div class="flex items-center">
-                                {{ radio.tag }}
-                                <label for="{{ radio.id_for_label }}" class="ml-2 text-sm text-gray-700">
-                                    {{ radio.choice_label }}
-                                </label>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <p id="maritime-warning" class="text-xs text-red-500 mt-2 italic hidden">
-                            Le service <strong>MARITIME</strong> est disponible uniquement pour <strong>Nador</strong> ou <strong>Driouch</strong>.
-                        </p>
-                    </div>
+<div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
+    <div class="space-y-2">
+        <label class="block text-sm font-medium text-gray-700">Service concerné <span class="text-red-500">*</span></label>
+        {% if user_role == 'saisie_ec' %}
+            <!-- Display service name for saisie_ec users -->
+            <div class="flex items-center">
+                <span class="text-sm font-semibold text-gray-900">{{ request.user.userprofile.get_service_display|default:"N/A" }}</span>
+                <!-- Hidden input to ensure submission -->
+                <input type="hidden" name="service" value="{{ user_profile.service|default:'SGP' }}">
+            </div>
+        {% else %}
+            <!-- Interactive services for non-saisie_ec users (including admin_saisie) -->
+            <div id="services-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
+                {% for radio in form.service %}
+                <div class="flex items-center">
+                    {{ radio.tag }}
+                    <label for="{{ radio.id_for_label }}" class="ml-2 text-sm text-gray-700">
+                        {{ radio.choice_label }}
+                    </label>
                 </div>
-
+                {% endfor %}
+            </div>
+            <p id="maritime-warning" class="text-xs text-red-500 mt-2 italic hidden">
+                Le service <strong>MARITIME</strong> est disponible uniquement pour <strong>Nador</strong> ou <strong>Driouch</strong>.
+            </p>
+        {% endif %}
+    </div>
+</div>
                 <!-- Format Card -->
                 <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
                     <div class="space-y-2">
@@ -120,7 +151,7 @@
                     </div>
                 </div>
 
-                <!-- Priority Card with Enhanced Colors -->
+                <!-- Priority Card -->
                 <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
                     <div class="space-y-2 relative">
                         <label class="block text-sm font-medium text-gray-700">Priorité</label>
@@ -128,7 +159,6 @@
                             <button type="button" onclick="togglePriorityDropdown()" 
                                     class="w-full p-2 border border-gray-300 rounded-md flex items-center justify-between bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-150">
                                 <span id="selected-priority" class="flex items-center space-x-2">
-                                    <!-- Colored circle indicator -->
                                     <span id="priority-indicator" class="w-3 h-3 rounded-full bg-yellow-500"></span>
                                     <span id="priority-label">Moyenne</span>
                                 </span>
@@ -143,7 +173,6 @@
                                          {% elif value == 'medium' %}text-yellow-600
                                          {% elif value == 'high' %}text-red-600
                                          {% endif %}">
-                                        <!-- Colored circle for each option -->
                                         <span class="w-3 h-3 rounded-full 
                                             {% if value == 'low' %}bg-green-500
                                             {% elif value == 'medium' %}bg-yellow-500
@@ -236,14 +265,24 @@
             </div>
             <div class="flex space-x-3" id="submit-buttons" style="display: none;">
                 <button type="button" onclick="closeModal('newLettreModal')" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">Annuler</button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Enregistrer la Requête</button>
+                <button type="submit" id="submit-button" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 relative">
+                    <span class="submit-text">Enregistrer la Requête</span>
+                    <span class="loading-spinner hidden absolute inset-0 flex items-center justify-center">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                </button>
             </div>
         </div>
     </form>
+
+    <!-- Debug Information (for troubleshooting) -->
+    <div class="mt-4 p-4 bg-gray-100 rounded-lg hidden">
+        <h3 class="text-sm font-medium text-gray-700">Debug Info</h3>
+        <pre>{{ request.user.userprofile|pprint }}</pre>
+    </div>
 </div>
 
 <style>
-    /* Form Inputs */
     input[type="text"],
     input[type="date"],
     select,
@@ -251,7 +290,6 @@
         @apply w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500;
     }
     
-    /* Checkboxes and Radios */
     input[type="checkbox"],
     input[type="radio"] {
         @apply h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500;
@@ -261,17 +299,19 @@
         @apply rounded-full;
     }
     
-    /* Cards */
+    input[type="checkbox"]:disabled,
+    input[type="radio"]:disabled {
+        @apply opacity-50 cursor-not-allowed;
+    }
+    
     .card {
         @apply border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm;
     }
     
-    /* File Upload Areas */
     .file-upload-area {
         @apply p-4 border-2 border-dashed rounded-md text-center cursor-pointer transition-colors;
     }
     
-    /* Priority Section Styles */
     #priority-dropdown div {
         transition: background-color 0.2s ease;
     }
@@ -288,7 +328,6 @@
         transform: rotate(180deg);
     }
     
-    /* Color classes for priority states */
     .priority-low {
         color: #059669;
     }
@@ -301,7 +340,6 @@
         color: #dc2626;
     }
     
-    /* Responsive Grid */
     @media (min-width: 640px) {
         .responsive-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -316,6 +354,14 @@
 </style>
 
 <script>
+    // Generate UUID for submission tracking
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
     // Initialize form
     setActiveSection('basic-info');
 
@@ -341,7 +387,6 @@
     function toggleAllDestinations() {
         const allCheckbox = document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}');
         const destinationCheckboxes = document.querySelectorAll('#destinations-container input[type="checkbox"]');
-        
         destinationCheckboxes.forEach(checkbox => {
             checkbox.checked = allCheckbox.checked;
         });
@@ -412,82 +457,230 @@
         priorityField.value = value;
         priorityLabel.textContent = label;
         
-        // Update the color based on priority
         switch(value) {
             case 'low':
                 priorityIndicator.className = 'w-3 h-3 rounded-full bg-green-500';
-                priorityLabel.className = 'text-green-600';
                 break;
             case 'medium':
                 priorityIndicator.className = 'w-3 h-3 rounded-full bg-yellow-500';
-                priorityLabel.className = 'text-yellow-600';
                 break;
             case 'high':
                 priorityIndicator.className = 'w-3 h-3 rounded-full bg-red-500';
-                priorityLabel.className = 'text-red-600';
                 break;
         }
         
-        // Close dropdown
         document.getElementById('priority-dropdown').classList.add('hidden');
         document.getElementById('priority-chevron').classList.remove('rotate-180');
     }
 
     // Service availability based on destinations
     function updateServiceAvailability() {
-        const allDestinationsChecked = document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}').checked;
+        const allDestinationsChecked = document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}')?.checked;
         const selectedDestinations = Array.from(document.querySelectorAll('#destinations-container input[type="checkbox"]:checked')).map(cb => cb.nextElementSibling.textContent.trim());
         const maritimeService = document.querySelector('#services-container input[value="MARITIME"]');
         const onlyNadorOrDriouch = selectedDestinations.every(dest => ['Nador', 'Driouch'].includes(dest));
         const maritimeWarning = document.getElementById('maritime-warning');
 
+        {% if user_role != 'saisie_ec' %}
         if (allDestinationsChecked || selectedDestinations.length === 0 || !onlyNadorOrDriouch) {
-            maritimeService.disabled = true;
-            if (maritimeService.checked) {
-                maritimeService.checked = false;
+            if (maritimeService) {
+                maritimeService.disabled = true;
+                if (maritimeService.checked) {
+                    maritimeService.checked = false;
+                    const firstAvailableService = document.querySelector('#services-container input[type="radio"]:not([value="MARITIME"])');
+                    if (firstAvailableService) {
+                        firstAvailableService.checked = true;
+                    }
+                }
             }
-            maritimeWarning.classList.remove('hidden');
+            maritimeWarning?.classList.remove('hidden');
         } else {
-            maritimeService.disabled = false;
-            maritimeWarning.classList.add('hidden');
+            if (maritimeService) {
+                maritimeService.disabled = false;
+            }
+            maritimeWarning?.classList.add('hidden');
         }
+        {% endif %}
     }
 
-    // Form submission validation
+    // Form submission validation and handling
+    let isSubmitting = false;
+    let submissionId = null;
+
     function handleSubmit(event) {
-        const selectedDestinations = Array.from(document.querySelectorAll('#destinations-container input[type="checkbox"]:checked'));
-        const selectedService = document.querySelector('#services-container input[type="radio"]:checked');
-        const selectedFormat = document.querySelector('#format-container input[type="radio"]:checked');
-
-        if (selectedDestinations.length === 0 && !document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}').checked) {
-            event.preventDefault();
-            alert('Veuillez sélectionner au moins une destination ou cocher "Tout sélectionner".');
-            return false;
-        }
-        if (!selectedService) {
-            event.preventDefault();
-            alert('Veuillez sélectionner un service.');
-            return false;
-        }
-        if (!selectedFormat) {
-            event.preventDefault();
-            alert('Veuillez sélectionner un format de la requête.');
-            return false;
-        }
-        return true;
+    event.preventDefault();
+    
+    if (isSubmitting) {
+        console.log('Submission already in progress');
+        return false;
     }
 
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        // Set up event listeners
-        document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}').addEventListener('change', toggleAllDestinations);
+    const form = document.getElementById('new-lettre-form');
+    const submitButton = document.getElementById('submit-button');
+    const submitText = submitButton.querySelector('.submit-text');
+    const loadingSpinner = submitButton.querySelector('.loading-spinner');
+    const submissionIdField = document.getElementById('submission-id');
+
+    submissionId = generateUUID();
+    submissionIdField.value = submissionId;
+
+    // Client-side validation
+    const subject = document.getElementById('{{ form.subject.id_for_label }}').value;
+    const category = document.getElementById('{{ form.category.id_for_label }}').value;
+    const date = document.getElementById('{{ form.date.id_for_label }}').value;
+    const deadline = document.getElementById('{{ form.deadline.id_for_label }}').value;
+    const selectedDestinations = Array.from(document.querySelectorAll('#destinations-container input[type="checkbox"]:checked'));
+    const selectedService = document.querySelector('#services-container input[type="radio"]:checked') || document.querySelector('input[name="service"]');
+    const selectedFormat = document.querySelector('#format-container input[type="radio"]:checked');
+
+    console.log('Selected service:', selectedService ? selectedService.value : 'None');
+
+    if (!subject) {
+        alert('Veuillez entrer un sujet.');
+        submissionIdField.value = '';
+        return false;
+    }
+    if (!category) {
+        alert('Veuillez sélectionner une catégorie.');
+        submissionIdField.value = '';
+        return false;
+    }
+    if (!date) {
+        alert('Veuillez entrer une date de réception.');
+        submissionIdField.value = '';
+        return false;
+    }
+    if (!deadline) {
+        alert('Veuillez entrer une date limite de réponse.');
+        submissionIdField.value = '';
+        return false;
+    }
+    {% if user_role != 'saisie_ec' and user_role != 'admin_saisie' %}
+    if (selectedDestinations.length === 0 && !document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}')?.checked) {
+        alert('Veuillez sélectionner au moins une destination ou cocher "Tout sélectionner".');
+        submissionIdField.value = '';
+        return false;
+    }
+    {% endif %}
+    if (!selectedService) {
+        alert('Veuillez sélectionner un service.');
+        submissionIdField.value = '';
+        return false;
+    }
+    if (!selectedFormat) {
+        alert('Veuillez sélectionner un format de la requête.');
+        submissionIdField.value = '';
+        return false;
+    }
+
+    isSubmitting = true;
+    submitButton.disabled = true;
+    submitText.classList.add('hidden');
+    loadingSpinner.classList.remove('hidden');
+    form.classList.add('opacity-50', 'pointer-events-none');
+
+    const formData = new FormData(form);
+    console.log('Form data service:', formData.get('service')); // Debug log
+
+    fetch("{% url 'lettres:new_lettres' %}", {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-Submission-ID': submissionId
+        }
+    })
+    .then(async response => {
+        console.log('Response Status:', response.status, 'Submission ID:', submissionId);
+        const contentType = response.headers.get('content-type');
+        let data;
+        if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            data = await response.text();
+            console.log('Unexpected Response:', data.substring(0, 100));
+            throw new Error('Une erreur inattendue s’est produite sur le serveur.');
+        }
+        if (!response.ok) {
+            throw new Error(data.errors || `Erreur ${response.status}`);
+        }
+        return data;
+    })
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'Requête créée avec succès !');
+            closeModal('newLettreModal');
+            form.reset();
+            window.location.href = "{% url 'lettres:dashboard' %}";
+        } else {
+            let errorMessage = 'Erreur lors de l\'enregistrement de la requête.';
+            if (data.errors) {
+                if (typeof data.errors === 'object') {
+                    errorMessage = Object.entries(data.errors).map(([field, errors]) => 
+                        `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`
+                    ).join('\n');
+                } else {
+                    errorMessage = data.errors;
+                }
+            }
+            alert(errorMessage);
+        }
+    })
+    .catch(error => {
+        console.error('Submission Error:', error.message, 'Submission ID:', submissionId);
+        alert(error.message || 'Une erreur est survenue. Veuillez réessayer ou contactez l’administrateur.');
+    })
+    .finally(() => {
+        isSubmitting = false;
+        submitButton.disabled = false;
+        submitText.classList.remove('hidden');
+        loadingSpinner.classList.add('hidden');
+        form.classList.remove('opacity-50', 'pointer-events-none');
+        submissionIdField.value = '';
+        submissionId = null;
+    });
+    
+    return false;
+}
+   
+
+    // Initialize event listeners with proper cleanup
+    function initializeEventListeners() {
+        // Remove any existing listeners first
+        const form = document.getElementById('new-lettre-form');
+        if (!form) return;
+        
+        // Clone and replace the form to remove all existing event listeners
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+        
+        // Add the submit event listener to the new form
+        document.getElementById('new-lettre-form').addEventListener('submit', handleSubmit);
+        
+        // Add other event listeners
+        {% if user_role == 'saisie_ec' or user_role == 'admin_saisie' %}
+        document.querySelectorAll('input[type="checkbox"][disabled], input[type="radio"]:disabled').forEach(input => {
+            input.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+        {% else %}
+        const allDestinationsCheckbox = document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}');
+        if (allDestinationsCheckbox) {
+            allDestinationsCheckbox.addEventListener('change', toggleAllDestinations);
+        }
         
         document.querySelectorAll('#destinations-container input[type="checkbox"]').forEach(checkbox => {
             checkbox.addEventListener('change', function() {
-                document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}').checked = false;
+                if (allDestinationsCheckbox) {
+                    allDestinationsCheckbox.checked = false;
+                }
                 updateServiceAvailability();
             });
         });
+        {% endif %}
         
         document.getElementById('{{ form.image_file.id_for_label }}').addEventListener('change', () => 
             updateFileDisplay('{{ form.image_file.id_for_label }}', 'image-file-display'));
@@ -495,18 +688,37 @@
         document.getElementById('{{ form.response_template.id_for_label }}').addEventListener('change', () => 
             updateFileDisplay('{{ form.response_template.id_for_label }}', 'template-file-display'));
         
-        // Initialize service availability
         updateServiceAvailability();
         
-        // Close dropdown when clicking outside
         document.addEventListener('click', function(event) {
             const dropdown = document.getElementById('priority-dropdown');
             const priorityButton = document.querySelector('[onclick="togglePriorityDropdown()"]');
-            
-            if (!dropdown.contains(event.target) && !priorityButton.contains(event.target)) {
+            if (dropdown && priorityButton && !dropdown.contains(event.target) && !priorityButton.contains(event.target)) {
                 dropdown.classList.add('hidden');
                 document.getElementById('priority-chevron').classList.remove('rotate-180');
             }
         });
+    }
+
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeEventListeners();
     });
+
+    // Close modal function
+    window.closeModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'none';
+            // Reset form state
+            const form = document.getElementById('new-lettre-form');
+            if (form) {
+                form.reset();
+                setActiveSection('basic-info');
+            }
+            isSubmitting = false;
+            submissionId = null;
+            document.getElementById('submission-id').value = '';
+        }
+    };
 </script>
