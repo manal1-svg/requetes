@@ -1,72 +1,82 @@
 {% extends 'menu/base.html' %}
 {% load static %}
 
-{% block title %}Destinations - Système de Suivi des Requêtes{% endblock %}
+{% block title %}Destinations - Système de Gestion des Courriers{% endblock %}
 
 {% block content %}
 <div class="flex h-screen">
-   
-        <!-- Main -->
-        <main class="flex-1 overflow-auto p-6">
-            <!-- Add Destination Button -->
-            <div class="flex justify-end mb-4">
-                <button onclick="openModal('addDestinationModal')" class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                    <i class="fas fa-plus mr-2"></i>
-                    Nouvelle Destination
-                </button>
+    <!-- Main -->
+    <main class="flex-1 overflow-auto p-6 font-roboto">
+        <!-- Messages -->
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="bg-{% if message.tags == 'success' %}green{% else %}red{% endif %}-100 border border-{% if message.tags == 'success' %}green{% else %}red{% endif %}-400 text-{% if message.tags == 'success' %}green{% else %}red{% endif %}-700 px-4 py-3 rounded-md text-sm mb-2">
+                <i class="fas fa-{% if message.tags == 'success' %}check-circle{% else %}exclamation-circle{% endif %} mr-2"></i>
+                {{ message }}
             </div>
+            {% endfor %}
+        </div>
+        {% endif %}
 
-            <!-- Destinations List -->
-            <div class="bg-white shadow rounded-lg overflow-hidden">
-                <div class="p-4 border-b">
-                    <h2 class="text-lg font-semibold">Liste des Destinations</h2>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Téléphone</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            {% for destination in destinations %}
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap">{{ destination.nom }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">{{ destination.telephone|default:'N/A' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">{{ destination.email|default:'N/A' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center gap-2">
-                                        <button onclick="openEditModal('{{ destination.id }}', '{{ destination.nom }}', '{{ destination.telephone|default:'' }}', '{{ destination.email|default:'' }}')"
-                                                class="text-blue-600 hover:text-blue-800 action-icon" title="Modifier">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <form action="{% url 'lettres:settings' %}" method="post" onsubmit="return confirm('Voulez-vous vraiment supprimer cette destination ?');">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="destination_id" value="{{ destination.id }}">
-                                            <input type="hidden" name="delete_destination" value="1">
-                                            <button type="submit" class="text-red-600 hover:text-red-800 action-icon" title="Supprimer">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="4" class="px-6 py-4 text-center text-gray-500">
-                                    Aucune destination trouvée
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+        <!-- Add Destination Button -->
+        <div class="flex justify-end mb-4">
+            <button onclick="openModal('addDestinationModal')" class="flex items-center px-4 py-2 bg-moroccan-red text-white rounded-full hover:bg-red-700 transition-all duration-200">
+                <i class="fas fa-plus mr-2"></i>
+                Nouvelle Destination
+            </button>
+        </div>
+
+        <!-- Destinations List -->
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+            <div class="p-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">Liste des Destinations</h2>
             </div>
-        </main>
-    </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Téléphone</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for destination in page_obj %}
+                        <tr class="hover:bg-gray-50 transition-colors duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap">{{ destination.nom }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">{{ destination.telephone|default:'N/A' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">{{ destination.email|default:'N/A' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-3">
+                                    <button onclick="openEditModal('{{ destination.id }}', '{{ destination.nom }}', '{{ destination.telephone|default:'' }}', '{{ destination.email|default:'' }}')"
+                                            class="text-blue-600 hover:text-blue-800 action-icon" title="Modifier" aria-label="Modifier la destination">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <form action="{% url 'lettres:destinations' %}" method="post" onsubmit="return confirm('Voulez-vous vraiment supprimer cette destination ?');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="destination_id" value="{{ destination.id }}">
+                                        <input type="hidden" name="delete_destination" value="1">
+                                        <button type="submit" class="text-red-600 hover:text-red-800 action-icon" title="Supprimer" aria-label="Supprimer la destination">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                                Aucune destination trouvée
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+        
+        </div>
+    </main>
 </div>
 
 <!-- Add Destination Modal -->
@@ -74,10 +84,10 @@
     <div class="modal-content max-w-lg w-full">
         <div class="modal-header border-0 pb-0">
             <h5 class="modal-title text-lg font-semibold text-gray-900">
-                <i class="fas fa-map-marker-alt mr-2"></i>
+                <i class="fas fa-map-marker-alt mr-2 text-moroccan-red"></i>
                 Ajouter une Destination
             </h5>
-            <button type="button" class="btn-close text-gray-500 hover:text-gray-700" onclick="closeModal('addDestinationModal')" aria-label="Close">
+            <button type="button" class="btn-close text-gray-500 hover:text-gray-700" onclick="closeModal('addDestinationModal')" aria-label="Fermer">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -86,10 +96,10 @@
                 {% csrf_token %}
                 {{ form.as_p }}
                 <div class="flex justify-end gap-2 mt-4">
-                    <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300" onclick="closeModal('addDestinationModal')">
+                    <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-all duration-200" onclick="closeModal('addDestinationModal')">
                         Annuler
                     </button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    <button type="submit" class="px-4 py-2 bg-moroccan-red text-white rounded-full hover:bg-red-700 transition-all duration-200">
                         Ajouter
                     </button>
                 </div>
@@ -103,10 +113,10 @@
     <div class="modal-content max-w-lg w-full">
         <div class="modal-header border-0 pb-0">
             <h5 class="modal-title text-lg font-semibold text-gray-900">
-                <i class="fas fa-edit mr-2"></i>
+                <i class="fas fa-edit mr-2 text-moroccan-red"></i>
                 Modifier une Destination
             </h5>
-            <button type="button" class="btn-close text-gray-500 hover:text-gray-700" onclick="closeModal('editDestinationModal')" aria-label="Close">
+            <button type="button" class="btn-close text-gray-500 hover:text-gray-700" onclick="closeModal('editDestinationModal')" aria-label="Fermer">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -116,26 +126,26 @@
                 <input type="hidden" name="destination_id" id="edit-destination-id">
                 <input type="hidden" name="edit_destination" value="1">
                 <div class="mb-4">
-                    <label for="edit-nom" class="block text-sm font-medium text-gray-700">Nom</label>
-                    <select id="edit-nom" name="nom" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" required>
+                    <label for="edit-nom" class="block text-sm font-medium text-gray-700">Nom de la destination</label>
+                    <select id="edit-nom" name="nom" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-moroccan-red focus:border-moroccan-red" required>
                         {% for choice in form.nom.field.choices %}
                         <option value="{{ choice.0 }}">{{ choice.1 }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="mb-4">
-                    <label for="edit-telephone" class="block text-sm font-medium text-gray-700">Téléphone</label>
-                    <input type="text" id="edit-telephone" name="telephone" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Entrez le numéro de téléphone">
+                    <label for="edit-telephone" class="block text-sm font-medium text-gray-700">Numéro de téléphone</label>
+                    <input type="text" id="edit-telephone" name="telephone" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-moroccan-red focus:border-moroccan-red" placeholder="Entrez le numéro de téléphone">
                 </div>
                 <div class="mb-4">
-                    <label for="edit-email" class="block text-sm font-medium text-gray-700">Email</label>
-                    <input type="email" id="edit-email" name="email" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Entrez l'adresse e-mail">
+                    <label for="edit-email" class="block text-sm font-medium text-gray-700">Adresse e-mail</label>
+                    <input type="email" id="edit-email" name="email" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-moroccan-red focus:border-moroccan-red" placeholder="Entrez l'adresse e-mail">
                 </div>
                 <div class="flex justify-end gap-2 mt-4">
-                    <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300" onclick="closeModal('editDestinationModal')">
+                    <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-all duration-200" onclick="closeModal('editDestinationModal')">
                         Annuler
                     </button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    <button type="submit" class="px-4 py-2 bg-moroccan-red text-white rounded-full hover:bg-red-700 transition-all duration-200">
                         Modifier
                     </button>
                 </div>
@@ -145,6 +155,15 @@
 </div>
 
 <style>
+    :root {
+        --moroccan-red: #c1272d;
+        --royal-gold: #ffd700;
+    }
+
+    .font-roboto {
+        font-family: 'Roboto', sans-serif;
+    }
+
     .modal {
         display: none;
         position: fixed;
@@ -168,9 +187,26 @@
         box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
         padding: 1.5rem;
         width: 90%;
+        border: 2px solid var(--royal-gold);
     }
     .action-icon {
         font-size: 1.1rem;
+        transition: color 0.2s ease;
+    }
+    @media (max-width: 640px) {
+        .modal-content {
+            width: 95%;
+            padding: 1rem;
+        }
+        .p-6 {
+            padding: 1rem;
+        }
+        .text-lg {
+            font-size: 1rem;
+        }
+        .text-sm {
+            font-size: 0.85rem;
+        }
     }
 </style>
 
