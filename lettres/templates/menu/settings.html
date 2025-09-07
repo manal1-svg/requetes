@@ -197,18 +197,21 @@
                             <tbody class="bg-white divide-y divide-gray-200">
                                 {% for user in users %}
                                 <tr class="hover:bg-gray-50 transition-colors {% if user.role == 'super_admin' %}bg-purple-50{% endif %}">
-                                    <!-- Colonne Utilisateur -->
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
-                                            <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                                <i class="fas fa-user text-blue-600"></i>
+                                            <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
+                                                {% if user.photo %}
+                                                    <img src="{{ user.photo.url }}" alt="Photo de profil de {{ user.user.username }}" class="h-full w-full object-cover">
+                                                {% else %}
+                                                    <i class="fas fa-user text-blue-600"></i>
+                                                {% endif %}
                                             </div>
                                             <div class="ml-4">
                                                 <div class="text-sm font-medium text-gray-900">
                                                     {{ user.user.username }}
                                                     {% if user.role == 'super_admin' %}
                                                     <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-600 text-white">
-                                                        <i class="fas fa-crown mr-1"></i> Super Admin
+                                                        <i class="fas fa-crown mr-1"></i>Super Admin
                                                     </span>
                                                     {% endif %}
                                                 </div>
@@ -216,8 +219,6 @@
                                             </div>
                                         </div>
                                     </td>
-                                    
-                                    <!-- Colonne Rôle -->
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex flex-col">
                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
@@ -227,15 +228,13 @@
                                                 {% else %}bg-green-100 text-green-800{% endif %}">
                                                 {{ user.get_role_display }}
                                             </span>
-                                            {% if user.service %}
+                                            {% if user.role in 'saisie_ec,saisie_er' and user.service %}
                                             <span class="mt-1 text-xs text-gray-500">
                                                 <i class="fas fa-cog mr-1"></i>{{ user.get_service_display }}
                                             </span>
                                             {% endif %}
                                         </div>
                                     </td>
-                                    
-                                    <!-- Colonne Affectation -->
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         {% if user.destination %}
                                         <div class="flex items-center">
@@ -246,8 +245,6 @@
                                         <span class="text-sm text-gray-500">-</span>
                                         {% endif %}
                                     </td>
-                                    
-                                    <!-- Colonne Dernière connexion -->
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-500">
                                             {% if user.user.last_login %}
@@ -257,17 +254,14 @@
                                             {% endif %}
                                         </div>
                                     </td>
-                                    
-                                    <!-- Colonne Actions -->
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         {% if user.role != 'super_admin' %}
                                         <div class="flex justify-end space-x-2">
-                                          
                                             <form method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?');">
                                                 {% csrf_token %}
                                                 <input type="hidden" name="delete_user" value="1">
                                                 <input type="hidden" name="user_id" value="{{ user.user.id }}">
-                                                <button type="submit" class="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50" title="Supprimer">
+                                                <button type="submit" class="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50" title="Supprimer" aria-label="Supprimer l'utilisateur">
                                                     <i class="fas fa-trash-alt"></i>
                                                 </button>
                                             </form>
@@ -295,8 +289,6 @@
                             </tbody>
                         </table>
                     </div>
-                    
-                    <!-- Pagination -->
                     {% if users.paginator.num_pages > 1 %}
                     <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
                         <div class="flex-1 flex justify-between sm:hidden">
@@ -325,7 +317,6 @@
                                         <i class="fas fa-chevron-left"></i>
                                     </a>
                                     {% endif %}
-                                    
                                     {% for num in users.paginator.page_range %}
                                         {% if users.number == num %}
                                         <a href="?tab=users&page={{ num }}" aria-current="page" class="z-10 bg-blue-50 border-blue-500 text-blue-600 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
@@ -337,7 +328,6 @@
                                         </a>
                                         {% endif %}
                                     {% endfor %}
-                                    
                                     {% if users.has_next %}
                                     <a href="?tab=users&page={{ users.next_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                         <span class="sr-only">Suivant</span>
@@ -375,7 +365,6 @@
                                     <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Nom</th>
                                     <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Téléphone</th>
                                     <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Email</th>
-                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">WhatsApp</th>
                                     <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
                                         <span class="sr-only">Actions</span>
                                     </th>
@@ -387,18 +376,17 @@
                                     <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">{{ destination.nom }}</td>
                                     <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ destination.telephone|default:"-" }}</td>
                                     <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ destination.email|default:"-" }}</td>
-                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ destination.whatsapp|default:"-" }}</td>
                                     <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                                         <div class="flex items-center gap-2">
-                                            <button onclick="openEditModal('{{ destination.id }}', '{{ destination.nom }}', '{{ destination.telephone|default:'' }}', '{{ destination.email|default:'' }}', '{{ destination.whatsapp|default:'' }}')"
-                                                    class="text-blue-600 hover:text-blue-800 action-icon" title="Modifier">
+                                            <button onclick="openEditModal('{{ destination.id }}', '{{ destination.nom }}', '{{ destination.telephone|default:'' }}', '{{ destination.email|default:'' }}')"
+                                                    class="text-blue-600 hover:text-blue-800 action-icon" title="Modifier" aria-label="Modifier la destination">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                             <form method="POST" action="{% url 'lettres:settings' %}?tab=destinations" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette destination ?');">
                                                 {% csrf_token %}
                                                 <input type="hidden" name="delete_destination" value="1">
                                                 <input type="hidden" name="destination_id" value="{{ destination.id }}">
-                                                <button type="submit" class="text-red-600 hover:text-red-900 action-icon" title="Supprimer">
+                                                <button type="submit" class="text-red-600 hover:text-red-900 action-icon" title="Supprimer" aria-label="Supprimer la destination">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
@@ -436,7 +424,7 @@
                     Veuillez corriger les erreurs ci-dessous pour continuer.
                 </div>
                 {% endif %}
-                <form method="POST" id="user-form" action="{% url 'lettres:settings' %}?tab=users">
+                <form method="POST" id="user-form" action="{% url 'lettres:settings' %}?tab=users" enctype="multipart/form-data">
                     {% csrf_token %}
                     <input type="hidden" name="add_user" value="1">
                     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -487,6 +475,14 @@
                             {{ user_form.service }}
                             {% if user_form.service.errors %}
                             <p class="mt-1 text-sm text-red-600" role="alert">{{ user_form.service.errors.as_text }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="{{ user_form.photo.id_for_label }}" class="block text-sm font-medium text-gray-700">Photo de profil</label>
+                            {{ user_form.photo }}
+                            <p class="mt-1 text-sm text-gray-500">Formats acceptés : JPG, PNG. Taille max : 2MB.</p>
+                            {% if user_form.photo.errors %}
+                            <p class="mt-1 text-sm text-red-600" role="alert">{{ user_form.photo.errors.as_text }}</p>
                             {% endif %}
                         </div>
                     </div>
@@ -550,13 +546,6 @@
                         <p class="mt-1 text-sm text-red-600" role="alert">{{ destination_form.email.errors.as_text }}</p>
                         {% endif %}
                     </div>
-                    <div class="mb-4">
-                        <label for="{{ destination_form.whatsapp.id_for_label }}" class="block text-sm font-medium text-gray-700">WhatsApp</label>
-                        {{ destination_form.whatsapp }}
-                        {% if destination_form.whatsapp.errors %}
-                        <p class="mt-1 text-sm text-red-600" role="alert">{{ destination_form.whatsapp.errors.as_text }}</p>
-                        {% endif %}
-                    </div>
                     {% if destination_form.non_field_errors %}
                     <div class="mt-4 p-4 bg-red-50 text-red-800 border border-red-200 rounded-md error-message" role="alert">
                         {{ destination_form.non_field_errors.as_text }}
@@ -607,10 +596,6 @@
                         <label for="edit-email" class="block text-sm font-medium text-gray-700">Email</label>
                         <input type="email" id="edit-email" name="email" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Entrez l'adresse e-mail">
                     </div>
-                    <div class="mb-4">
-                        <label for="edit-whatsapp" class="block text-sm font-medium text-gray-700">WhatsApp</label>
-                        <input type="text" id="edit-whatsapp" name="whatsapp" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Entrez le numéro WhatsApp">
-                    </div>
                     <div class="flex justify-end gap-2 mt-4">
                         <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300" onclick="closeModal('editDestinationModal')">
                             Annuler
@@ -626,6 +611,14 @@
 </div>
 
 <style>
+:root {
+    --moroccan-red: #c1272d;
+    --royal-gold: #ffd700;
+}
+body {
+    font-family: 'Roboto', sans-serif;
+    background: linear-gradient(to bottom right, #f0f7ff, #e0e7ff);
+}
 .toggle-switch {
     position: relative;
     display: inline-block;
@@ -668,21 +661,25 @@ input:checked + .toggle-slider:before {
 input:focus + .toggle-slider {
     box-shadow: 0 0 1px #3b82f6;
 }
-input[type="text"], input[type="email"], input[type="password"], input[type="tel"], select {
+input[type="text"], input[type="email"], input[type="password"], input[type="tel"], input[type="file"], select {
     border: 1px solid #d1d5db;
     border-radius: 0.375rem;
     padding: 0.5rem 0.75rem;
     width: 100%;
     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
 }
-input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="tel"]:focus, select:focus {
+input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="tel"]:focus, input[type="file"]:focus, select:focus {
     outline: none;
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
 }
-input[type="text"].error, input[type="email"].error, input[type="password"].error, input[type="tel"].error, select.error {
+input[type="text"].error, input[type="email"].error, input[type="password"].error, input[type="tel"].error, input[type="file"].error, select.error {
     border-color: #ef4444;
     box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+.tab-button:hover {
+    color: var(--moroccan-red);
+    border-color: var(--royal-gold);
 }
 .modal {
     display: none;
@@ -708,6 +705,17 @@ input[type="text"].error, input[type="email"].error, input[type="password"].erro
     padding: 1.5rem;
     width: 90%;
 }
+.modal-content::-webkit-scrollbar {
+    width: 6px;
+}
+.modal-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+.modal-content::-webkit-scrollbar-thumb {
+    background: #3b82f6;
+    border-radius: 10px;
+}
 .action-icon {
     font-size: 1.1rem;
 }
@@ -722,7 +730,12 @@ input[type="text"].error, input[type="email"].error, input[type="password"].erro
     border-radius: 0.375rem;
     font-size: 0.875rem;
 }
-
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        padding: 1rem;
+    }
+}
 </style>
 
 <script>
@@ -759,29 +772,77 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Dynamic Service Field Visibility
+    // Dynamic Service Field Visibility and Options
     const roleSelect = document.querySelector('#id_role');
+    const destinationSelect = document.querySelector('#id_destination');
+    const serviceSelect = document.querySelector('#id_service');
     const serviceField = document.querySelector('#service-field');
+    
+    // Define all possible service choices
+    const allServiceChoices = [
+        {% for value, label in user_form.service.field.choices %}
+        { value: '{{ value }}', label: '{{ label }}' },
+        {% endfor %}
+    ];
     
     function toggleServiceField() {
         const role = roleSelect.value;
         if (role === 'saisie_ec' || role === 'saisie_er') {
             serviceField.classList.remove('hidden');
+            updateServiceOptions();
         } else {
             serviceField.classList.add('hidden');
-            document.querySelector('#id_service').value = '';
+            serviceSelect.value = '';
         }
     }
     
-    if (roleSelect) {
-        roleSelect.addEventListener('change', toggleServiceField);
+    function updateServiceOptions() {
+        const destinationId = destinationSelect.value;
+        if (destinationId) {
+            fetch(`/lettres/get-destination-name/${destinationId}/`, {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const destinationName = data.nom;
+                serviceSelect.innerHTML = '<option value="">Sélectionner un service</option>';
+                const allowedServices = (destinationName === 'Nador' || destinationName === 'Driouch')
+                    ? allServiceChoices
+                    : allServiceChoices.filter(service => service.value !== 'maritime');
+                allowedServices.forEach(service => {
+                    const option = document.createElement('option');
+                    option.value = service.value;
+                    option.text = service.label;
+                    serviceSelect.appendChild(option);
+                });
+                const currentService = serviceSelect.getAttribute('data-current-service') || '';
+                if (allowedServices.some(service => service.value === currentService)) {
+                    serviceSelect.value = currentService;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching destination name:', error);
+            });
+        }
+    }
+    
+    if (roleSelect && destinationSelect && serviceSelect) {
+        roleSelect.addEventListener('change', () => {
+            toggleServiceField();
+            updateServiceOptions();
+        });
+        destinationSelect.addEventListener('change', updateServiceOptions);
         toggleServiceField();
+        updateServiceOptions();
     }
 
     // Modal Functions
     function openModal(modalId) {
         document.getElementById(modalId).classList.add('active');
-        // Clear previous errors
         const errorMessages = document.querySelectorAll(`#${modalId} .text-red-600, #${modalId} .error-message`);
         errorMessages.forEach(error => error.remove());
         const errorInputs = document.querySelectorAll(`#${modalId} input.error, #${modalId} select.error`);
@@ -794,6 +855,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (form) {
             form.reset();
             toggleServiceField();
+            updateServiceOptions();
             const errorMessages = document.querySelectorAll(`#${modalId} .text-red-600, #${modalId} .error-message`);
             errorMessages.forEach(error => error.remove());
             const errorInputs = document.querySelectorAll(`#${modalId} input.error, #${modalId} select.error`);
@@ -801,12 +863,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function openEditModal(id, nom, telephone, email, whatsapp) {
+    function openEditModal(id, nom, telephone, email) {
         document.getElementById('edit-destination-id').value = id;
         document.getElementById('edit-nom').value = nom;
         document.getElementById('edit-telephone').value = telephone;
         document.getElementById('edit-email').value = email;
-        document.getElementById('edit-whatsapp').value = whatsapp;
         openModal('editDestinationModal');
     }
 

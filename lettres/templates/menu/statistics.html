@@ -1,34 +1,36 @@
 {% extends 'menu/base.html' %}
 {% load static %}
 
-
 {% block content %}
 <div class="flex-1 flex flex-col overflow-hidden">
- 
 
     <!-- Main -->
     <main class="flex-1 overflow-auto p-8 bg-gradient-to-br from-gray-50 to-blue-100">
-        <!-- Doughnut Chart: Répartition des Requêtes par Région -->
-        <div class="chart-container">
-            <h2 class="chart-title">Répartition des Requêtes par Région</h2>
-            <div class="canvas-container">
-                <canvas id="requestsChart"></canvas>
-            </div>
+
+        <!-- Top Header: Statistique -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Statistique</h1>
+            <p class="text-gray-600 mt-2">Analyse des requêtes et performances par région</p>
         </div>
 
-        <!-- Polar Area Chart: Temps Moyen de Réponse par Région -->
-        <div class="chart-container">
-            <h2 class="chart-title">Temps Moyen de Réponse par Région</h2>
-            <div class="canvas-container">
-                <canvas id="responseTimeChart"></canvas>
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Doughnut Chart: Répartition des Requêtes par Région -->
+            <div class="chart-card">
+                <h2 class="chart-title">Répartition des Requêtes par Région</h2>
+                <canvas id="requestsChart" class="chart-canvas"></canvas>
             </div>
-        </div>
 
-        <!-- Doughnut Chart: Taux de Réponse par Région -->
-        <div class="chart-container">
-            <h2 class="chart-title">Taux de Réponse par Région</h2>
-            <div class="canvas-container">
-                <canvas id="responseRateChart"></canvas>
+            <!-- Polar Area Chart: Temps Moyen de Réponse par Région -->
+            <div class="chart-card">
+                <h2 class="chart-title">Temps Moyen de Réponse par Région</h2>
+                <canvas id="responseTimeChart" class="chart-canvas"></canvas>
+            </div>
+
+            <!-- Doughnut Chart: Taux de Réponse par Région -->
+            <div class="chart-card md:col-span-2">
+                <h2 class="chart-title">Taux de Réponse par Région</h2>
+                <canvas id="responseRateChart" class="chart-canvas"></canvas>
             </div>
         </div>
     </main>
@@ -36,7 +38,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>
-    // Data for charts
     const regionStats = [
         {% for stat in region_stats %}
         {
@@ -51,100 +52,65 @@
         {% endfor %}
     ];
 
-    // Chart 1: Répartition des Requêtes par Région (Doughnut)
-    const requestsChart = new Chart(document.getElementById('requestsChart'), {
-        type: 'doughnut',
-        data: {
-            labels: regionStats.map(stat => stat.destination),
-            datasets: [{
-                label: 'Nombre de Requêtes',
-                data: regionStats.map(stat => stat.total),
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.8)',
-                    'rgba(54, 162, 235, 0.8)',
-                    'rgba(255, 206, 86, 0.8)',
-                    'rgba(75, 192, 192, 0.8)',
-                    'rgba(153, 102, 255, 0.8)',
-                    'rgba(255, 159, 64, 0.8)'
-                ],
-                borderColor: [
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(255, 206, 86, 1)',
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(153, 102, 255, 1)',
-                    'rgba(255, 159, 64, 1)'
-                ],
-                borderWidth: 2,
-                hoverOffset: 20
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '60%',
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: {
-                        boxWidth: 20,
-                        padding: 20,
-                        font: {
-                            size: 14
-                        }
-                    }
-                },
-                title: {
-                    display: true,
-                    text: 'Répartition des Requêtes par Région',
-                    font: {
-                        size: 18,
-                        weight: 'bold'
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleFont: { size: 14 },
-                    bodyFont: { size: 12 },
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.label || '';
-                            if (label) {
-                                label += ': ';
+    const COLORS = [
+        'rgba(255, 99, 132, 0.8)',
+        'rgba(54, 162, 235, 0.8)',
+        'rgba(255, 206, 86, 0.8)',
+        'rgba(75, 192, 192, 0.8)',
+        'rgba(153, 102, 255, 0.8)',
+        'rgba(255, 159, 64, 0.8)'
+    ];
+
+    const BORDER_COLORS = COLORS.map(c => c.replace('0.8', '1'));
+
+    function createDoughnutChart(ctx, label, data, titleText) {
+        return new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: regionStats.map(s => s.destination),
+                datasets: [{
+                    label: label,
+                    data: data,
+                    backgroundColor: COLORS,
+                    borderColor: BORDER_COLORS,
+                    borderWidth: 2,
+                    hoverOffset: 20
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '60%',
+                plugins: {
+                    legend: { position: 'right', labels: { boxWidth: 20, padding: 15, font: { size: 14 } } },
+                    title: { display: true, text: titleText, font: { size: 18, weight: 'bold' } },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        titleFont: { size: 14 },
+                        bodyFont: { size: 12 },
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.label}: ${context.parsed}${label.includes('%') ? '%' : ' requêtes'}`;
                             }
-                            label += context.parsed + ' requêtes';
-                            return label;
                         }
                     }
                 }
             }
-        }
-    });
+        });
+    }
 
-    // Chart 2: Temps Moyen de Réponse par Région (Polar Area)
-    const responseTimeChart = new Chart(document.getElementById('responseTimeChart'), {
+    createDoughnutChart(document.getElementById('requestsChart'), 'Nombre de Requêtes', regionStats.map(s => s.total), 'Répartition des Requêtes par Région');
+    createDoughnutChart(document.getElementById('responseRateChart'), 'Taux de Réponse (%)', regionStats.map(s => s.taux_reponse), 'Taux de Réponse par Région');
+
+    new Chart(document.getElementById('responseTimeChart'), {
         type: 'polarArea',
         data: {
-            labels: regionStats.map(stat => stat.destination),
+            labels: regionStats.map(s => s.destination),
             datasets: [{
                 label: 'Temps Moyen de Réponse (heures)',
-                data: regionStats.map(stat => stat.avg_response_time),
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.6)',
-                    'rgba(54, 162, 235, 0.6)',
-                    'rgba(255, 206, 86, 0.6)',
-                    'rgba(75, 192, 192, 0.6)',
-                    'rgba(153, 102, 255, 0.6)',
-                    'rgba(255, 159, 64, 0.6)'
-                ],
-                borderColor: [
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(255, 206, 86, 1)',
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(153, 102, 255, 1)',
-                    'rgba(255, 159, 64, 1)'
-                ],
+                data: regionStats.map(s => s.avg_response_time),
+                backgroundColor: COLORS.map(c => c.replace('0.8','0.6')),
+                borderColor: BORDER_COLORS,
                 borderWidth: 2
             }]
         },
@@ -154,143 +120,48 @@
             scales: {
                 r: {
                     beginAtZero: true,
-                    ticks: {
-                        backdropColor: 'transparent',
-                        font: {
-                            size: 12
-                        }
-                    }
+                    ticks: { backdropColor: 'transparent', font: { size: 12 } }
                 }
             },
             plugins: {
-                legend: {
-                    position: 'right',
-                    labels: {
-                        boxWidth: 20,
-                        padding: 20,
-                        font: {
-                            size: 14
-                        }
-                    }
-                },
-                title: {
-                    display: true,
-                    text: 'Temps Moyen de Réponse par Région',
-                    font: {
-                        size: 18,
-                        weight: 'bold'
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleFont: { size: 14 },
-                    bodyFont: { size: 12 },
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            label += context.parsed.toFixed(1) + ' heures';
-                            return label;
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    // Chart 3: Taux de Réponse par Région (Doughnut)
-    const responseRateChart = new Chart(document.getElementById('responseRateChart'), {
-        type: 'doughnut',
-        data: {
-            labels: regionStats.map(stat => stat.destination),
-            datasets: [{
-                label: 'Taux de Réponse (%)',
-                data: regionStats.map(stat => stat.taux_reponse),
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.8)',
-                    'rgba(54, 162, 235, 0.8)',
-                    'rgba(255, 206, 86, 0.8)',
-                    'rgba(75, 192, 192, 0.8)',
-                    'rgba(153, 102, 255, 0.8)',
-                    'rgba(255, 159, 64, 0.8)'
-                ],
-                borderColor: [
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(255, 206, 86, 1)',
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(153, 102, 255, 1)',
-                    'rgba(255, 159, 64, 1)'
-                ],
-                borderWidth: 2,
-                hoverOffset: 20
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '60%',
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: {
-                        boxWidth: 20,
-                        padding: 20,
-                        font: {
-                            size: 14
-                        }
-                    }
-                },
-                title: {
-                    display: true,
-                    text: 'Taux de Réponse par Région',
-                    font: {
-                        size: 18,
-                        weight: 'bold'
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleFont: { size: 14 },
-                    bodyFont: { size: 12 },
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            label += context.parsed.toFixed(1) + '%';
-                            return label;
-                        }
-                    }
-                }
+                legend: { position: 'right', labels: { boxWidth: 20, padding: 15, font: { size: 14 } } },
+                title: { display: true, text: 'Temps Moyen de Réponse par Région', font: { size: 18, weight: 'bold' } },
+                tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', titleFont: { size: 14 }, bodyFont: { size: 12 }, callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed.toFixed(1)} heures` } }
             }
         }
     });
 </script>
+
 <style>
-    body {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        font-family: 'Inter', sans-serif;
-    }
-    .chart-container {
-        @apply bg-white rounded-3xl p-8 mb-8 shadow-xl border border-gray-100;
-        position: relative;
+    body { font-family: 'Inter', sans-serif; }
+
+    .chart-card {
+        background: white;
+        border-radius: 2rem;
+        padding: 2rem;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        border: 1px solid #f0f0f0;
         height: 400px;
-        overflow: hidden;
         transition: all 0.3s ease;
     }
-    .chart-container:hover {
+    .chart-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-    }
-    .canvas-container {
-        @apply w-full h-full;
+        box-shadow: 0 12px 25px rgba(0,0,0,0.15);
     }
     .chart-title {
-        @apply text-2xl font-semibold text-gray-800 mb-6;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1.5rem;
+        text-align: center;
     }
+    .chart-canvas {
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Statistique Header */
+    h1 { font-weight: 700; }
+    p { color: #4b5563; }
 </style>
 {% endblock %}
