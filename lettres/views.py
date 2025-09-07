@@ -643,7 +643,7 @@ def dashboard_Reponse(request):
         })
 
     # Pagination
-    paginator = Paginator(lettres_with_responses, 8)
+    paginator = Paginator(lettres_with_responses, 4)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 

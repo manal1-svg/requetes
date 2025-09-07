@@ -6,7 +6,6 @@ from datetime import timedelta
 from django.core.validators import EmailValidator
 from django.db.models import Q
 
-
 class Destination(models.Model):
     DESTINATION_CHOICES = [
         ('Oujda-Angad', 'Oujda-Angad'),
@@ -80,9 +79,31 @@ class Lettre(models.Model):
     statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='en_attente', verbose_name='Statut')
     rappels_envoyes = models.IntegerField(default=0, verbose_name='Rappels envoyés')
     date_dernier_rappel = models.DateField(null=True, blank=True, verbose_name='Date du dernier rappel')
+    created_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        verbose_name='Créé par',
+        related_name='lettres_created'  # Useful for reverse relationships
+    )
 
     def __str__(self):
         return f"{self.subject} ({self.get_priority_display()})"
+
+    def update_status(self):
+        """Update the lettre status based on deadline and responses."""
+        today = timezone.now().date()
+        if self.statut != 'repondu' and self.deadline and today > self.deadline:
+            self.statut = 'en_retard'
+        elif self.statut != 'repondu':
+            expected_response_count = Destination.objects.count() if self.sent_to_all_destinations else self.destinations.count()
+            responded_count = self.reponses.filter(statut='repondu').count()
+            if responded_count >= expected_response_count and expected_response_count > 0:
+                self.statut = 'repondu'
+            else:
+                self.statut = 'en_attente'
+        self.save()
 
     def clean(self):
         if self.pk:
@@ -117,6 +138,13 @@ class Response(models.Model):
         ('repondu', 'Répondu'),
         ('en_retard', 'En retard'),
     )
+    APPROVAL_CHOICES = [
+        ('pending', 'En attente '),
+        ('accepted', 'Acceptée'),
+        ('revision_requested', 'Révision demandée'),
+    ]
+    approval_status = models.CharField(max_length=20, choices=APPROVAL_CHOICES, default='pending')
+    revision_comments = models.TextField(blank=True)
 
     lettre = models.ForeignKey(Lettre, on_delete=models.CASCADE, related_name='reponses', verbose_name='Lettre')
     destination = models.ForeignKey(Destination, on_delete=models.CASCADE, verbose_name='Destination')
@@ -132,10 +160,12 @@ class Response(models.Model):
         return f"{self.lettre.subject} - {self.destination.nom} - {self.user.username if self.user else 'Admin'}"
 
     class Meta:
-        unique_together = ('lettre', 'destination', 'user')
+        unique_together = ('lettre', 'destination')
         ordering = ['destination__nom', 'created_at']
         verbose_name = 'Réponse régionale'
         verbose_name_plural = 'Réponses régionales'
+
+        
 class Rappel(models.Model):
     TYPE_CHOICES = [
         ('email', 'Email'),
@@ -188,11 +218,23 @@ class UserProfile(models.Model):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, verbose_name='Rôle')
     destination = models.ForeignKey(Destination, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Destination')
     service = models.CharField(max_length=20, choices=Lettre.SERVICE_CHOICES, null=True, blank=True, verbose_name='Service')
+    photo = models.ImageField(upload_to='profiles/', null=True, blank=True, verbose_name='Photo de profil')
 
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
 
     def clean(self):
+        # Validate photo size and format
+        if self.photo:
+            if self.photo.size > 2 * 1024 * 1024:  # 2MB limit
+                raise ValidationError("La photo de profil ne doit pas dépasser 2 Mo.")
+            try:
+                img = Image.open(self.photo)
+                if img.format not in ['JPEG', 'PNG']:
+                    raise ValidationError("La photo de profil doit être au format JPEG ou PNG.")
+            except Exception:
+                raise ValidationError("Fichier de photo invalide.")
+        
         # Enforce service requirement for saisie_ec and saisie_er
         if self.role in ['saisie_ec', 'saisie_er'] and not self.service:
             raise ValidationError("Les rôles 'Responsable Service DR' et 'Responsable Service DP' doivent être associés à un service.")
@@ -215,5 +257,7 @@ class UserProfile(models.Model):
     class Meta:
         verbose_name = 'Profil utilisateur'
         verbose_name_plural = 'Profils utilisateurs'
+        db_table = 'lettres_userprofile'
 
-        db_table = 'lettres_userprofile'  # Explicitly set the table name
+
+        

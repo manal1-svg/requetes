@@ -99,35 +99,31 @@ class LettreForm(forms.ModelForm):
     def __init__(self, *args, user_profile=None, **kwargs):
         super().__init__(*args, **kwargs)
         if user_profile:
-            logger.debug(f"User profile role: {user_profile.role}, service: {user_profile.service}, destination: {user_profile.destination}")
-            # Set initial service with fallback
+            logger.debug(f"Initializing form for user {user_profile.user.username}: role={user_profile.role}, service={user_profile.service}, destination={user_profile.destination}")
             valid_services = dict(Lettre.SERVICE_CHOICES)
-            if user_profile.service and user_profile.service in valid_services:
+            if user_profile.role in ['saisie_ec', 'saisie_er']:
+                if not user_profile.service or user_profile.service not in valid_services:
+                    logger.error(f"Invalid or missing service for user {user_profile.user.username}: service={user_profile.service}")
+                    raise ValidationError(f"Le service n'est pas configuré correctement pour cet utilisateur ({user_profile.service}). Contactez l'administrateur.")
+                logger.debug(f"Setting service to {user_profile.service} for {user_profile.role} user")
                 self.fields['service'].initial = user_profile.service
-            else:
-                self.fields['service'].initial = 'SGP'
-                logger.warning(f"Invalid or missing service for user {user_profile.user.username}, defaulting to SGP")
-            # Set initial destination with fallback
-            if user_profile.role in ['saisie_ec', 'admin_saisie', 'directeur_regional']:
+                self.fields['service'].widget = forms.HiddenInput()
+                self.fields['service'].choices = [(user_profile.service, user_profile.get_service_display())]
+                # Ensure the service value is locked
+                self.initial['service'] = user_profile.service
+                self.data = self.data.copy()  # Make data mutable
+                self.data['service'] = user_profile.service  # Force service value in POST data
+            if user_profile.role in ['saisie_ec', 'saisie_er', 'admin_saisie', 'directeur_regional']:
                 if user_profile.destination and hasattr(user_profile.destination, 'id'):
                     self.fields['destinations'].initial = [user_profile.destination.id]
                     self.fields['destinations'].disabled = True
-                    self.fields['destinations'].widget.attrs['disabled'] = 'disabled'
                     self.fields['destinations'].widget = forms.HiddenInput()
                     self.fields['sent_to_all_destinations'].disabled = True
                     self.fields['sent_to_all_destinations'].widget.attrs['disabled'] = 'disabled'
-                    logger.debug(f"Destinations field disabled and set to {user_profile.destination} for {user_profile.role} user")
+                    logger.debug(f"Destinations set to {user_profile.destination} for {user_profile.role} user")
                 else:
-                    default_destination = Destination.objects.first()
-                    if default_destination:
-                        self.fields['destinations'].initial = [default_destination.id]
-                        logger.warning(f"No destination for user {user_profile.user.username}, defaulting to {default_destination}")
-                    else:
-                        logger.error("No destinations available to set as default")
-                        raise ValidationError("Aucune destination disponible pour configuration.")
-            else:
-                logger.debug("Service and destinations fields enabled for other users")
-            # Set initial value for created_by
+                    logger.error(f"No destination set for user {user_profile.user.username} with role {user_profile.role}")
+                    raise ValidationError("Aucune destination configurée pour cet utilisateur. Contactez l’administrateur.")
             if user_profile.user:
                 self.fields['created_by'].initial = user_profile.user
 
@@ -136,36 +132,31 @@ class LettreForm(forms.ModelForm):
         service = cleaned_data.get('service')
         destinations = cleaned_data.get('destinations')
         sent_to_all_destinations = cleaned_data.get('sent_to_all_destinations')
+        user_profile = getattr(self, 'user_profile', None)
 
-        # Ensure at least one destination is selected or sent_to_all_destinations is checked
+        logger.debug(f"Cleaning form: service={service}, destinations={destinations}, sent_to_all_destinations={sent_to_all_destinations}")
+
         if not sent_to_all_destinations and not destinations:
             logger.error("Validation failed: No destinations selected and sent_to_all_destinations not checked")
             raise ValidationError("Veuillez sélectionner au moins une destination ou cocher 'Envoyé à toutes les destinations'.")
 
-        # Validate MARITIME service restriction
         if service == 'MARITIME' and not sent_to_all_destinations:
             valid_destinations = Destination.objects.filter(nom__in=['Nador', 'Driouch'])
             if not all(destination in valid_destinations for destination in destinations):
                 logger.error("Validation failed: MARITIME service selected with invalid destinations")
                 raise ValidationError("Le service MARITIME est uniquement disponible pour Nador ou Driouch.")
 
+        if user_profile and user_profile.role in ['saisie_ec', 'saisie_er']:
+            if service != user_profile.service:
+                logger.error(f"Validation failed: Service {service} does not match user profile service {user_profile.service} for {user_profile.role} user")
+                raise ValidationError(f"Le service sélectionné ({service}) ne correspond pas au service configuré ({user_profile.service}).")
+            logger.debug(f"Validated service: {service} matches user profile service for {user_profile.role} user")
+
+        if not service:
+            logger.error("Validation failed: Service field is empty")
+            raise ValidationError("Veuillez sélectionner un service.")
+
         return cleaned_data
-
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        destinations = self.cleaned_data.get('destinations')
-        sent_to_all_destinations = self.cleaned_data.get('sent_to_all_destinations')
-
-        if commit:
-            instance.save()
-            instance.destinations.clear()
-            if sent_to_all_destinations:
-                instance.destinations.set(Destination.objects.all())
-            else:
-                instance.destinations.set(destinations)
-            instance.save()
-        return instance
-
         
 class DestinationForm(forms.ModelForm):
     class Meta:
@@ -191,7 +182,7 @@ class ResponseForm(forms.ModelForm):
         self.fields['statut'].required = True
         self.fields['date_reponse'].required = True
         self.fields['temps_reponse'].required = False
-        self.fields['response_file'].required = False  # Optional, like image_file/response_template
+        self.fields['response_file'].required = False
 
     class Meta:
         model = Response
@@ -206,7 +197,7 @@ class ResponseForm(forms.ModelForm):
             'response_file': forms.FileInput(attrs={
                 'class': 'hidden',
                 'id': 'response-file-upload',
-                'accept': '.xls,.xlsx,.pdf,.doc,.docx'  # Match LettreForm's response_template
+                'accept': '.xls,.xlsx,.pdf,.doc,.docx'
             }),
             'statut': forms.HiddenInput(),
             'date_reponse': forms.HiddenInput(),
@@ -224,7 +215,7 @@ class ResponseForm(forms.ModelForm):
                 'Excel': ['.xls', '.xlsx'],
                 'PDF': ['.pdf'],
                 'Word': ['.doc', '.docx'],
-                'Autre': ['.xls', '.xlsx', '.pdf', '.doc', '.docx']  # Allow all for 'Autre'
+                'Autre': ['.xls', '.xlsx', '.pdf', '.doc', '.docx']
             }
             allowed_extensions = valid_extensions.get(expected_format)
             if allowed_extensions and file_ext not in allowed_extensions:
@@ -238,11 +229,32 @@ class ResponseForm(forms.ModelForm):
         instance = super().save(commit=False)
         logger.debug("Saving Response: lettre=%s, destination=%s, file=%s",
                      self.lettre.id, instance.destination.nom, self.cleaned_data.get('response_file'))
+        if self.cleaned_data.get('response_file'):
+            instance.approval_status = 'pending'
+            instance.revision_comments = ''
         if commit:
             instance.save()
             logger.info("Response saved: ID=%s", instance.id)
         return instance
 
+class ResponseApprovalForm(forms.ModelForm):
+    class Meta:
+        model = Response
+        fields = ['approval_status', 'revision_comments']
+        widgets = {
+            'approval_status': forms.Select(choices=Response.APPROVAL_CHOICES),
+            'revision_comments': forms.Textarea(attrs={'rows': 4, 'class': 'w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500'}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        approval_status = cleaned_data.get('approval_status')
+        revision_comments = cleaned_data.get('revision_comments')
+
+        if approval_status == 'revision_requested' and not revision_comments:
+            raise ValidationError("Les commentaires sont obligatoires lors de la demande de révision.")
+
+        return cleaned_data
 
 class SystemSettingsForm(forms.ModelForm):
     class Meta:
@@ -266,20 +278,21 @@ class SystemSettingsForm(forms.ModelForm):
             'archive_closed_after_month': 'Archiver les requêtes clôturées après 1 mois',
         }
 
-
 class UserProfileForm(forms.ModelForm):
     class Meta:
         model = UserProfile
-        fields = ['role', 'destination', 'service']
+        fields = ['role', 'destination', 'service', 'photo']
         widgets = {
             'role': forms.Select(attrs={'class': 'w-full border border-gray-300 rounded-md p-2'}),
             'destination': forms.Select(attrs={'class': 'w-full border border-gray-300 rounded-md p-2'}),
             'service': forms.Select(attrs={'class': 'w-full border border-gray-300 rounded-md p-2'}),
+            'photo': forms.FileInput(attrs={'class': 'w-full border border-gray-300 rounded-md p-2', 'accept': 'image/jpeg,image/png'}),
         }
         labels = {
             'role': 'Rôle',
             'destination': 'Destination',
             'service': 'Service',
+            'photo': 'Photo de profil',
         }
 
     def __init__(self, *args, **kwargs):
@@ -296,6 +309,7 @@ class UserProfileForm(forms.ModelForm):
         role = cleaned_data.get('role')
         destination = cleaned_data.get('destination')
         service = cleaned_data.get('service')
+        photo = cleaned_data.get('photo')
 
         if role in ['saisie_ec', 'saisie_er']:
             if not service:
@@ -316,6 +330,12 @@ class UserProfileForm(forms.ModelForm):
                 raise ValidationError("Le rôle de Directeur Régional ne peut pas être associé à un service.")
             if destination and UserProfile.objects.exclude(user__id=self.instance.user_id).filter(role='admin_saisie', destination=destination).exists():
                 raise ValidationError(f"Un Directeur Régional est déjà assigné à la destination {destination.nom}.")
+
+        if photo:
+            if photo.size > 2 * 1024 * 1024:  # 2MB limit
+                raise ValidationError("La photo de profil ne doit pas dépasser 2 Mo.")
+            if not photo.content_type in ['image/jpeg', 'image/png']:
+                raise ValidationError("La photo de profil doit être au format JPEG ou PNG.")
 
         return cleaned_data
 
@@ -344,10 +364,14 @@ class UserCreationForm(BaseUserCreationForm):
         required=False,
         widget=forms.Select(attrs={'class': 'w-full border border-gray-300 rounded-md p-2'})
     )
+    photo = forms.ImageField(
+        required=False,
+        widget=forms.FileInput(attrs={'class': 'w-full border border-gray-300 rounded-md p-2', 'accept': 'image/jpeg,image/png'})
+    )
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password1', 'password2', 'role', 'destination', 'service']
+        fields = ['username', 'email', 'password1', 'password2', 'role', 'destination', 'service', 'photo']
         widgets = {
             'username': forms.TextInput(attrs={'class': 'w-full border border-gray-300 rounded-md p-2', 'placeholder': "Nom d'utilisateur"}),
             'password1': forms.PasswordInput(attrs={'class': 'w-full border border-gray-300 rounded-md p-2', 'placeholder': 'Mot de passe'}),
@@ -371,6 +395,7 @@ class UserCreationForm(BaseUserCreationForm):
         role = cleaned_data.get('role')
         destination = cleaned_data.get('destination')
         service = cleaned_data.get('service')
+        photo = cleaned_data.get('photo')
 
         if role in ['saisie_ec', 'saisie_er']:
             if not service:
@@ -389,9 +414,15 @@ class UserCreationForm(BaseUserCreationForm):
                 raise ValidationError("Veuillez sélectionner une destination pour le rôle de Directeur Régional.")
             if service:
                 raise ValidationError("Le rôle de Directeur Régional ne peut pas être associé à un service.")
-            cleaned_data['service'] = None  # Explicitly set service to None
+            cleaned_data['service'] = None
             if destination and UserProfile.objects.filter(role='admin_saisie', destination=destination).exists():
                 raise ValidationError(f"Un Directeur Régional est déjà assigné à la destination {destination.nom}.")
+
+        if photo:
+            if photo.size > 2 * 1024 * 1024:
+                raise ValidationError("La photo de profil ne doit pas dépasser 2 Mo.")
+            if not photo.content_type in ['image/jpeg', 'image/png']:
+                raise ValidationError("La photo de profil doit être au format JPEG ou PNG.")
 
         return cleaned_data
 
@@ -401,6 +432,7 @@ class UserCreationForm(BaseUserCreationForm):
         role = self.cleaned_data['role']
         destination = self.cleaned_data['destination']
         service = self.cleaned_data['service'] if role in ['saisie_ec', 'saisie_er'] else None
+        photo = self.cleaned_data['photo']
 
         if commit:
             user.save()
@@ -408,6 +440,7 @@ class UserCreationForm(BaseUserCreationForm):
                 user=user,
                 role=role,
                 destination=destination if role in ['saisie_ec', 'saisie_er', 'admin_reponse', 'admin_saisie'] else None,
-                service=service
+                service=service,
+                photo=photo
             )
         return user

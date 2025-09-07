@@ -2,6 +2,7 @@
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
+from .views import approve_response
 from . import views
 
 app_name = 'lettres'
@@ -30,5 +31,6 @@ urlpatterns = [
    
     path('submit_response/<int:lettre_id>/', views.submit_response, name='submit_response'),
     path('dashboard_Reponse/', views.dashboard_Reponse, name='dashboard_Reponse'),
+    path('approve_response/<int:response_id>/', approve_response, name='approve_response'),
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
