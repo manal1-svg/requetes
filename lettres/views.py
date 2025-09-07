@@ -1,18 +1,21 @@
-from functools import cache
+
 import json
+import logging
 from time import timezone
 from django.middleware.csrf import logger
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from functools import cache
 from django.db.models import Avg, Count, Q, Case, When, IntegerField
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 from django.db import IntegrityError
 from .models import Lettre, Destination, Response, SystemSettings, UserProfile, Rappel 
-from .forms import LoginForm, LettreForm, ResponseForm, SystemSettingsForm, UserCreationForm, DestinationForm
+from .forms import LoginForm, LettreForm, ResponseApprovalForm, ResponseForm, SystemSettingsForm, UserCreationForm, DestinationForm, UserProfileForm
 from datetime import date, datetime, timedelta
+
 import math
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError 
@@ -36,6 +39,8 @@ from datetime import datetime
 from django.views.decorators.csrf import csrf_exempt
 
 from celery import shared_task
+
+logger = logging.getLogger(__name__)
 
 @login_required
 def profile(request):
@@ -90,9 +95,6 @@ def logout_view(request):
     logout(request)
     return redirect('lettres:login')
 
-
-
-
 @login_required
 def dashboard(request):
     try:
@@ -137,7 +139,14 @@ def dashboard(request):
     if search:
         lettres = lettres.filter(Q(subject__icontains=search) | Q(category__icontains=search))
     if statut_filter:
-        lettres = lettres.filter(statut=statut_filter)
+        if statut_filter == 'revision_requested':
+            # Filter letters where the user's destination has a response with approval_status='revision_requested'
+            lettres = lettres.filter(
+                reponses__destination=profile.destination,
+                reponses__approval_status='revision_requested'
+            ).distinct()
+        else:
+            lettres = lettres.filter(statut=statut_filter)
     if categorie_filter:
         lettres = lettres.filter(category=categorie_filter)
     if destination_filter:
@@ -206,7 +215,8 @@ def dashboard(request):
                     destination=profile.destination,
                     defaults={'statut': 'en_attente', 'user': request.user if profile.role == 'saisie_ec' else None}
                 )
-                user_destination_status = response.statut
+                # Check approval_status first for revision_requested
+                user_destination_status = response.approval_status if response.approval_status == 'revision_requested' else response.statut
                 if response.response_file:
                     try:
                         user_response_file_url = response.response_file.url
@@ -247,7 +257,7 @@ def dashboard(request):
         'lettres_en_attente': lettres_en_attente,
         'lettres_repondues': lettres_repondues,
         'lettres_en_retard': lettres_en_retard,
-        'lettres_en_cours': lettres_en_cours,  # New context variable for En Cours
+        'lettres_en_cours': lettres_en_cours,
         'temps_moyen_reponse': round(avg_response_time, 1),
         'categories': Lettre.objects.values_list('category', flat=True).distinct(),
         'destinations': Destination.objects.all(),
@@ -260,6 +270,144 @@ def dashboard(request):
     }
     return render(request, 'create_requet/dashboard.html', context)
 
+@login_required
+def new_lettres(request):
+    try:
+        profile = request.user.userprofile
+    except UserProfile.DoesNotExist:
+        logger.error(f"User {request.user.username} has no UserProfile configured")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'errors': 'Votre compte n’a pas de profil utilisateur configuré. Contactez l’administrateur.'}, status=400)
+        return render(request, 'error.html', {
+            'error': 'Votre compte n’a pas de profil utilisateur configuré. Contactez l’administrateur.'
+        }, status=403)
+
+    # Validate profile for saisie_ec/saisie_er
+    if profile.role in ['saisie_ec', 'saisie_er']:
+        if not profile.service:
+            logger.error(f"User {request.user.username} with role {profile.role} has no service configured")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': 'Votre compte n’a pas de service configuré. Contactez l’administrateur.'}, status=400)
+            return render(request, 'error.html', {
+                'error': 'Votre compte n’a pas de service configuré. Contactez l’administrateur.'
+            }, status=403)
+        valid_services = dict(Lettre.SERVICE_CHOICES)
+        if profile.service not in valid_services:
+            logger.error(f"Invalid service {profile.service} for user {request.user.username} with role {profile.role}")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': f"Le service '{profile.service}' n'est pas valide. Contactez l’administrateur."}, status=400)
+            return render(request, 'error.html', {
+                'error': f"Le service '{profile.service}' n'est pas valide. Contactez l’administrateur."
+            }, status=403)
+
+    if profile.role not in ['super_admin', 'admin_saisie', 'saisie_ec', 'directeur_regional']:
+        logger.warning(f"User {request.user.username} with role {profile.role} attempted to access new_lettres")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'errors': "Vous n'êtes pas autorisé à créer des requêtes."}, status=403)
+        messages.error(request, "Vous n'êtes pas autorisé à créer des requêtes.")
+        return redirect('lettres:dashboard')
+
+    submission_id = request.headers.get('X-Submission-ID')
+    if request.method == 'POST' and submission_id:
+        cache_key = f'submission_{submission_id}'
+        if cache.get(cache_key):
+            logger.warning(f"Duplicate submission detected: {submission_id}")
+            return JsonResponse({'success': False, 'errors': 'Duplicate submission detected.'}, status=400)
+        cache.set(cache_key, True, timeout=30)
+
+    if not profile.destination and profile.role != 'super_admin':
+        if Destination.objects.exists():
+            profile.destination = Destination.objects.first()
+            logger.info(f"Set default destination to {profile.destination.nom} for user {request.user.username}")
+            profile.save()
+        else:
+            profile.destination = Destination.objects.create(nom='Oujda-Angad', email='default@example.com')
+            logger.info(f"Created and set default destination Oujda-Angad for user {request.user.username}")
+            profile.save()
+
+    if request.method == 'POST':
+        logger.debug(f"POST data for user {request.user.username}: {dict(request.POST)}, service={request.POST.get('service')}")
+        try:
+            form = LettreForm(request.POST, request.FILES, user_profile=profile)
+            if form.is_valid():
+                try:
+                    lettre = form.save(commit=False)
+                    logger.debug(f"Saving lettre with service={lettre.service} for user {request.user.username}")
+                    lettre.created_by = request.user
+                    lettre.save()
+                    form.save_m2m()
+                    destinations = Destination.objects.all() if lettre.sent_to_all_destinations else lettre.destinations.all()
+                    for destination in destinations:
+                        Response.objects.get_or_create(
+                            lettre=lettre,
+                            destination=destination,
+                            user=None,
+                            defaults={'statut': 'en_attente'}
+                        )
+                    logger.info(f"User {request.user.username} created lettre {lettre.id} with service {lettre.service} successfully")
+                    if submission_id:
+                        cache.delete(cache_key)
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({'success': True, 'message': 'Requête créée avec succès.'})
+                    messages.success(request, "Requête créée avec succès.")
+                    return redirect('lettres:dashboard')
+                except Exception as e:
+                    logger.exception(f"Error saving lettre for user {request.user.username}: {str(e)}")
+                    if submission_id:
+                        cache.delete(cache_key)
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({'success': False, 'errors': f"Erreur lors de l'enregistrement: {str(e)}"}, status=400)
+                    messages.error(request, f"Erreur lors de l'enregistrement: {str(e)}")
+            else:
+                errors = {field: errors for field, errors in form.errors.items()}
+                logger.error(f"Form validation failed for user {request.user.username}: {errors}")
+                if submission_id:
+                    cache.delete(cache_key)
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'errors': errors}, status=400)
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{field}: {error}")
+        except ValidationError as e:
+            logger.error(f"Form initialization or validation failed for user {request.user.username}: {str(e)}")
+            if submission_id:
+                cache.delete(cache_key)
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': f"Erreur de validation: {str(e)}"}, status=400)
+            messages.error(request, f"Erreur de validation: {str(e)}")
+    else:
+        try:
+            initial = {
+                'destinations': [profile.destination.id] if profile.destination and profile.role in ['admin_saisie', 'saisie_ec', 'directeur_regional'] else [],
+                'service': profile.service if profile.role in ['saisie_ec', 'saisie_er'] else None,
+                'created_by': request.user,
+            }
+            logger.debug(f"Initializing form with initial data: {initial} for user {request.user.username}")
+            form = LettreForm(initial=initial, user_profile=profile)
+        except ValidationError as e:
+            logger.error(f"Form initialization failed for user {request.user.username}: {str(e)}")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': f"Erreur d'initialisation: {str(e)}"}, status=400)
+            return render(request, 'error.html', {
+                'error': str(e)
+            }, status=400)
+
+    return render(request, 'create_requet/new_lettres.html', {
+        'form': form,
+        'user_role': profile.role,
+        'user_profile': profile
+    })
+
+
+
+
+
+
+
+
+
+
+@login_required
 def lettre_detail(request, pk):
     try:
         profile = request.user.userprofile
@@ -326,7 +474,11 @@ def lettre_detail(request, pk):
                 'date_reponse': response.date_reponse.strftime('%d/%m/%Y') if response.date_reponse else None,
                 'rappels': list(rappels),
                 'email': destination.email or '',
-                'response_file': response_file_url
+                'response_file': response_file_url,
+                # Add approval-related fields
+                'response_id': response.id,
+                'approval_status': response.approval_status if hasattr(response, 'approval_status') else 'pending',
+                'revision_comments': response.revision_comments if hasattr(response, 'revision_comments') else None,
             })
         except Exception as e:
             logger.error("Error processing destination %s for lettre %s: %s", destination.nom, pk, str(e))
@@ -371,6 +523,13 @@ def lettre_detail(request, pk):
     except Exception as e:
         logger.error("Error constructing response data for lettre %s: %s", pk, str(e))
         return JsonResponse({'success': False, 'message': 'Erreur interne lors de la construction des données.'}, status=500)
+
+
+
+
+
+
+
 
 
 @login_required
@@ -444,25 +603,47 @@ def dashboard_Reponse(request):
         filtered_responses = filtered_responses.filter(
             Q(lettre__subject__icontains=search) | Q(lettre__description__icontains=search)
         )
+    # --- Modified to support 'revision_requested' filter ---
     if statut_filter:
-        filtered_responses = filtered_responses.filter(statut=statut_filter)
+        if statut_filter == 'revision_requested':
+            filtered_responses = filtered_responses.filter(approval_status='revision_requested')
+        else:
+            filtered_responses = filtered_responses.filter(statut=statut_filter)
     if categorie_filter:
         filtered_responses = filtered_responses.filter(lettre__category=categorie_filter)
 
     # Prepare data for template
-    lettres_with_responses = [
-        {
+    lettres_with_responses = []
+    for response in filtered_responses:
+        # Compute display_status based on statut and approval_status
+        approval_status = response.approval_status if hasattr(response, 'approval_status') else 'pending'
+        logger.debug(f"Response ID={response.id}, Statut={response.statut}, Approval={approval_status}")
+        if approval_status == 'revision_requested':
+            display_status = 'Révision demandée'
+        elif response.statut == 'repondu':
+            if approval_status == 'pending':
+                display_status = 'Soumise'
+            elif approval_status == 'accepted':
+                display_status = 'Acceptée'
+            else:
+                display_status = 'Répondu'
+        elif response.statut == 'en_retard':
+            display_status = 'En retard'
+        else:
+            display_status = 'En attente'
+
+        lettres_with_responses.append({
             'lettre': response.lettre,
             'response': response,
             'responded_count': Response.objects.filter(lettre=response.lettre, statut='repondu').count(),
             'total_destinations': Response.objects.filter(lettre=response.lettre).count(),
-            'created_by': response.lettre.created_by.username if response.lettre.created_by else 'Unknown'
-        }
-        for response in filtered_responses
-    ]
+            'created_by': response.lettre.created_by.username if response.lettre.created_by else 'Unknown',
+            'display_status': display_status,
+            'approval_status': approval_status,
+        })
 
     # Pagination
-    paginator = Paginator(lettres_with_responses, 10)
+    paginator = Paginator(lettres_with_responses, 8)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -491,138 +672,7 @@ def dashboard_Reponse(request):
     return render(request, 'response_requet/user_dashboard.html', context)
 
 
-@login_required
-def new_lettres(request):
-    try:
-        profile = request.user.userprofile
-    except UserProfile.DoesNotExist:
-        logger.error(f"User {request.user.username} has no UserProfile configured")
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({'success': False, 'errors': 'Votre compte n’a pas de profil utilisateur configuré. Contactez l’administrateur.'}, status=400)
-        return render(request, 'error.html', {
-            'error': 'Votre compte n’a pas de profil utilisateur configuré. Contactez l’administrateur.'
-        }, status=403)
-
-    if profile.role not in ['super_admin', 'admin_saisie', 'saisie_ec', 'directeur_regional']:
-        logger.warning(f"User {request.user.username} with role {profile.role} attempted to access new_lettres")
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({'success': False, 'errors': "Vous n'êtes pas autorisé à créer des requêtes."}, status=403)
-        messages.error(request, "Vous n'êtes pas autorisé à créer des requêtes.")
-        return redirect('lettres:dashboard')
-
-    submission_id = request.headers.get('X-Submission-ID')
-    if request.method == 'POST' and submission_id:
-        cache_key = f'submission_{submission_id}'
-        if cache.get(cache_key):
-            logger.warning(f"Duplicate submission detected: {submission_id}")
-            return JsonResponse({'success': False, 'errors': 'Duplicate submission detected.'}, status=400)
-        cache.set(cache_key, True, timeout=30)
-
-    # Only set default destination if none exists and user is not super_admin
-    if not profile.destination and profile.role != 'super_admin':
-        if Destination.objects.exists():
-            profile.destination = Destination.objects.first()
-            logger.info(f"Set default destination to {profile.destination.nom} for user {request.user.username}")
-            profile.save()
-        else:
-            profile.destination = Destination.objects.create(nom='Oujda-Angad', email='default@example.com')
-            logger.info(f"Created and set default destination Oujda-Angad for user {request.user.username}")
-            profile.save()
-
-    # Only set default service for saisie_ec/saisie_er if none exists
-    if not profile.service and profile.role in ['saisie_ec', 'saisie_er']:
-        profile.service = 'SGP'
-        profile.save()
-        logger.info(f"Set default service to SGP for user {request.user.username}")
-
-    if request.method == 'POST':
-        form = LettreForm(request.POST, request.FILES, user_profile=profile)
-        if form.is_valid():
-            try:
-                # Save the form but don't commit to the database yet
-                lettre = form.save(commit=False)
-                # Set the created_by field to the current user
-                lettre.created_by = request.user
-                # Save the Lettre instance to the database
-                lettre.save()
-                # Save the many-to-many relationships (destinations)
-                form.save_m2m()
-                destinations = Destination.objects.all() if lettre.sent_to_all_destinations else lettre.destinations.all()
-                for destination in destinations:
-                    Response.objects.get_or_create(
-                        lettre=lettre,
-                        destination=destination,
-                        user=None,
-                        defaults={'statut': 'en_attente'}
-                    )
-                logger.info(f"User {request.user.username} created lettre {lettre.id} successfully")
-                if submission_id:
-                    cache.delete(cache_key)  # Clear cache on success
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({'success': True, 'message': 'Requête créée avec succès.'})
-                messages.success(request, "Requête créée avec succès.")
-                return redirect('lettres:dashboard')
-            except Exception as e:
-                logger.exception(f"Error saving lettre for user {request.user.username}: {str(e)}")
-                if submission_id:
-                    cache.delete(cache_key)  # Clear cache on failure
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({'success': False, 'errors': f"Erreur lors de l'enregistrement: {str(e)}"}, status=400)
-                messages.error(request, f"Erreur lors de l'enregistrement: {str(e)}")
-        else:
-            errors = {field: errors for field, errors in form.errors.items()}
-            logger.error(f"Form validation failed for user {request.user.username}: {errors}")
-            if submission_id:
-                cache.delete(cache_key)  # Clear cache on failure
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'errors': errors}, status=400)
-            for field, errors in form.errors.items():
-                for error in errors:
-                    messages.error(request, f"{field}: {error}")
-    else:
-        initial = {
-            'destinations': [profile.destination.id] if profile.destination and profile.role in ['admin_saisie', 'saisie_ec', 'directeur_regional'] else [],
-            'service': profile.service if profile.service and profile.role in ['saisie_ec', 'saisie_er'] else None,
-        }
-        form = LettreForm(initial=initial, user_profile=profile)
-
-    return render(request, 'create_requet/new_lettres.html', {
-        'form': form,
-        'user_role': profile.role,
-        'user_profile': profile
-    })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-import logging
-logger = logging.getLogger(__name__)
-
+    
 @login_required
 def submit_response(request, lettre_id):
     try:
@@ -664,18 +714,21 @@ def submit_response(request, lettre_id):
         form = ResponseForm(request.POST, request.FILES, instance=response, lettre=lettre)
         if form.is_valid():
             response = form.save(commit=False)
-            # Set statut to 'repondu' only if response_file is provided
             response_file = form.cleaned_data.get('response_file')
+            # --- Added logging for debugging ---
+            logger.debug(f"Processing response for lettre {lettre.id}, response_file: {response_file}")
             if response_file:
                 response.statut = 'repondu'
                 response.date_reponse = datetime.now().date()
                 response.temps_reponse = math.floor((datetime.now().date() - lettre.date).days * 24)
+                response.approval_status = 'pending'
+                response.revision_comments = ''
             else:
                 response.statut = 'en_attente'
             response.user = None if profile.role == 'admin_reponse' else request.user
             try:
                 response.save()
-                logger.info(f"Response saved: ID={response.id}, File={response.response_file.path if response.response_file else None}")
+                logger.info(f"Response saved: ID={response.id}, File={response.response_file.path if response.response_file else None}, Statut={response.statut}, Approval={response.approval_status}")
             except Exception as e:
                 logger.error(f"Failed to save response: {str(e)}")
                 return JsonResponse({'success': False, 'message': f'Erreur lors de l\'enregistrement: {str(e)}'}, status=500)
@@ -727,7 +780,6 @@ def submit_response(request, lettre_id):
         'user_role': profile.role
     })
 
-@login_required
 @login_required
 def response_detail(request, response_id):
     try:
@@ -786,6 +838,8 @@ def response_detail(request, response_id):
                 'response_file': response.response_file.url if response.response_file else None,
                 'response_template': lettre.response_template.url if lettre.response_template else None,
                 'image': image_url,  # Include image_file URL
+                'approval_status': response.approval_status,
+                'revision_comments': response.revision_comments,
             }
             return JsonResponse(data, status=200)
         except Exception as e:
@@ -799,8 +853,72 @@ def response_detail(request, response_id):
         'user_role': profile.role,
     }
     return render(request, 'response_requet/response_detail.html', context)
-    
 
+@login_required
+def approve_response(request, response_id):
+    profile = request.user.userprofile
+    if profile.role not in ['super_admin', 'admin_saisie', 'saisie_ec']:
+        return JsonResponse({'success': False, 'message': "Vous n'êtes pas autorisé à approuver les réponses."}, status=403)
+
+    response = get_object_or_404(Response, id=response_id)
+    if profile.role == 'saisie_ec' and response.lettre.service != profile.service:
+        return JsonResponse({'success': False, 'message': "Vous ne pouvez approuver que les réponses de votre service."}, status=403)
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            approval_status = data.get('approval_status')
+            revision_comments = data.get('revision_comments', '')
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
+        if approval_status not in dict(Response.APPROVAL_CHOICES):
+            return JsonResponse({'success': False, 'message': 'Invalid approval status'}, status=400)
+
+        response.approval_status = approval_status
+        response.revision_comments = revision_comments
+
+        # --- Modified to set statut to 'en_attente' for revision_requested ---
+        if approval_status == 'revision_requested':
+            if not revision_comments:
+                return JsonResponse({'success': False, 'message': 'Comments required for revision'}, status=400)
+            response.statut = 'en_attente'  # Set to 'en_attente' to indicate further action needed
+            # Send email notification for revision request
+            subject = f"Révision demandée pour {response.lettre.subject}"
+            message = f"Révision demandée pour la requête: {response.lettre.subject}.\nCommentaires: {revision_comments}\nVeuillez resoumettre."
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [response.destination.email])
+        elif approval_status == 'accepted':
+            response.statut = 'repondu'
+
+        try:
+            response.save()
+            logger.info(f"Response updated: ID={response.id}, Statut={response.statut}, Approval={response.approval_status}")
+        except Exception as e:
+            logger.error(f"Failed to save response: {str(e)}")
+            return JsonResponse({'success': False, 'message': f'Erreur lors de l\'enregistrement: {str(e)}'}, status=500)
+
+        # Update lettre status
+        lettre = response.lettre
+        all_accepted = all(r.approval_status == 'accepted' for r in lettre.reponses.all() if r.statut == 'repondu')
+        # --- Modified to handle revision_requested in lettre status ---
+        if all_accepted:
+            lettre.statut = 'repondu'
+        elif any(r.approval_status == 'revision_requested' for r in lettre.reponses.all()):
+            lettre.statut = 'en_attente'
+        elif lettre.is_overdue:
+            lettre.statut = 'en_retard'
+        else:
+            lettre.statut = 'en_attente'
+        try:
+            lettre.save()
+            logger.info(f"Lettre status updated: {lettre.id}, new status: {lettre.statut}")
+        except Exception as e:
+            logger.error(f"Failed to save lettre: {str(e)}")
+            return JsonResponse({'success': False, 'message': f'Erreur lors de la mise à jour de la lettre: {str(e)}'}, status=500)
+
+        return JsonResponse({'success': True, 'message': 'Statut mis à jour.'})
+    
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée.'}, status=405)
 @login_required
 def destinations(request):
     try:
@@ -814,28 +932,64 @@ def destinations(request):
         messages.error(request, "Vous n'êtes pas autorisé à gérer les destinations.")
         return redirect('lettres:dashboard')
 
-    destinations = Destination.objects.all()
+    # Paginate destinations
+    destinations_list = Destination.objects.all().order_by('nom')
+    paginator = Paginator(destinations_list, 10)  # 10 destinations per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
     if request.method == 'POST':
-        form = DestinationForm(request.POST)
-        if form.is_valid():
+        if 'delete_destination' in request.POST:
+            # Handle deletion
+            destination_id = request.POST.get('destination_id')
+            destination = get_object_or_404(Destination, id=destination_id)
             try:
-                form.save()
-                messages.success(request, 'Destination ajoutée avec succès.')
-                return redirect('lettres:destinations')
+                destination.delete()
+                messages.success(request, 'Destination supprimée avec succès.')
             except IntegrityError:
-                messages.error(request, "Erreur : Cette destination existe déjà.")
+                messages.error(request, 'Erreur : Impossible de supprimer cette destination car elle est utilisée ailleurs.')
+            return redirect('lettres:destinations')
+
+        elif 'edit_destination' in request.POST:
+            # Handle editing
+            destination_id = request.POST.get('destination_id')
+            destination = get_object_or_404(Destination, id=destination_id)
+            form = DestinationForm(request.POST, instance=destination)
+            if form.is_valid():
+                try:
+                    form.save()
+                    messages.success(request, 'Destination modifiée avec succès.')
+                    return redirect('lettres:destinations')
+                except IntegrityError:
+                    messages.error(request, 'Erreur : Cette destination existe déjà.')
+            else:
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{field}: {error}")
+
         else:
-            for field, errors in form.errors.items():
-                for error in errors:
-                    messages.error(request, f"{field}: {error}")
+            # Handle adding new destination
+            form = DestinationForm(request.POST)
+            if form.is_valid():
+                try:
+                    form.save()
+                    messages.success(request, 'Destination ajoutée avec succès.')
+                    return redirect('lettres:destinations')
+                except IntegrityError:
+                    messages.error(request, 'Erreur : Cette destination existe déjà.')
+            else:
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{field}: {error}")
 
     context = {
-        'destinations': destinations,
+        'page_obj': page_obj,
         'form': DestinationForm(),
         'user_role': profile.role,
     }
     return render(request, 'menu/destinations.html', context)
+
+
 
 @login_required
 def statistics(request):
@@ -1431,6 +1585,7 @@ def settings_page(request):
     form = SystemSettingsForm(instance=settings)
     user_form = UserCreationForm()
     destination_form = DestinationForm()
+    edit_user_form = UserProfileForm()
     users = UserProfile.objects.all()
     destinations = Destination.objects.all()
 
@@ -1447,7 +1602,7 @@ def settings_page(request):
                 logger.error(f"System settings form errors: {form.errors}")
 
         elif 'add_user' in request.POST:
-            user_form = UserCreationForm(request.POST)
+            user_form = UserCreationForm(request.POST, request.FILES)
             if user_form.is_valid():
                 try:
                     user = user_form.save()
@@ -1460,6 +1615,24 @@ def settings_page(request):
             else:
                 messages.error(request, "Erreur lors de la création de l'utilisateur. Veuillez vérifier les informations saisies.")
                 logger.error(f"User creation form errors: {user_form.errors}")
+
+        elif 'edit_user' in request.POST:
+            user_id = request.POST.get('user_id')
+            try:
+                user_profile = UserProfile.objects.get(user__id=user_id)
+                edit_user_form = UserProfileForm(request.POST, request.FILES, instance=user_profile)
+                if edit_user_form.is_valid():
+                    edit_user_form.save()
+                    messages.success(request, f"Le profil de l'utilisateur '{user_profile.user.username}' a été modifié avec succès.")
+                    logger.info(f"User {user_profile.user.username} profile edited by {request.user.username}")
+                    return redirect('lettres:settings?tab=users')
+                else:
+                    messages.error(request, "Erreur lors de la modification de l'utilisateur. Veuillez vérifier les informations saisies.")
+                    logger.error(f"Edit user form errors: {edit_user_form.errors}")
+            except UserProfile.DoesNotExist:
+                messages.error(request, "L'utilisateur sélectionné n'existe pas.")
+                logger.error(f"UserProfile with ID {user_id} not found")
+                return redirect('lettres:settings?tab=users')
 
         elif 'delete_user' in request.POST:
             user_id = request.POST.get('user_id')
@@ -1529,6 +1702,7 @@ def settings_page(request):
     context = {
         'form': form,
         'user_form': user_form,
+        'edit_user_form': edit_user_form,
         'destination_form': destination_form,
         'users': users,
         'destinations': destinations,
