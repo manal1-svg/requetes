@@ -24,6 +24,10 @@ urlpatterns = [
     path('lettre/<int:pk>/detail/', views.lettre_detail, name='lettre_detail'),
     path('lettre/<int:pk>/rappels/<str:destination_name>/', views.get_rappels, name='get_rappels'),
     path('response/<int:response_id>/', views.response_detail, name='response_detail'),
+    path('response/<int:response_id>/detail/', views.response_detail, name='response_detail'),
+   
+    path('submit_response/<int:lettre_id>/', views.submit_response, name='submit_response'),
+    path('dashboard_Reponse/', views.dashboard_Reponse, name='dashboard_Reponse'),
 
  
    
