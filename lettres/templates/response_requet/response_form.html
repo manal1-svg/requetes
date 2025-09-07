@@ -1,0 +1,309 @@
+{% extends 'menu/base.html' %}
+{% load static %}
+
+{% block title %}
+Répondre à la Requête - {{ lettre.subject }}
+{% endblock %}
+
+{% block header_title %}
+{% if form.instance.response_file %}Modifier{% else %}Répondre à{% endif %} la Requête
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body {
+        font-family: 'Inter', sans-serif;
+    }
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 50;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal.active {
+        display: flex;
+    }
+    .modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        max-width: 800px;
+        width: 90%;
+    }
+    .animate-fade-in {
+        animation: fadeIn 0.3s ease-out forwards;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .file-upload {
+        border: 2px dashed #d1d5db;
+        transition: all 0.3s ease;
+    }
+    .file-upload:hover {
+        border-color: #3b82f6;
+        background-color: #f8fafc;
+    }
+    .file-upload.active {
+        border-color: #3b82f6;
+        background-color: #eff6ff;
+    }
+    .error-message {
+        color: #dc2626;
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+    }
+    .file-name {
+        font-size: 0.875rem;
+        color: #374151;
+        margin-top: 0.5rem;
+        word-break: break-all;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="flex-1 overflow-auto p-6">
+    <div id="responseModal" class="modal">
+        <div class="modal-content animate-fade-in">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-blue-50 to-gray-50">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">
+                        <i class="fas fa-reply mr-2 text-blue-500"></i>
+                        {% if form.instance.response_file %}Modifier{% else %}Répondre à{% endif %} la Requête
+                    </h2>
+                    <p class="text-sm text-gray-500 mt-1">
+                        {{ lettre.category }} • {{ lettre.deadline|date:"d/m/Y" }}
+                    </p>
+                </div>
+                <button type="button" onclick="closeResponseModal()" 
+                        class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- Content -->
+            <div class="p-6 space-y-6">
+                <!-- Letter Info -->
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2 flex items-center">
+                        <i class="fas fa-envelope-open-text mr-2 text-blue-400"></i>
+                        {{ lettre.subject }}
+                    </h3>
+                    {% if lettre.description %}
+                    <div class="text-sm text-gray-600 mb-3">
+                        <span class="font-medium">Description :</span>
+                        <p class="mt-1">{{ lettre.description }}</p>
+                    </div>
+                    {% endif %}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-600">
+                        <div class="flex items-start">
+                            <i class="fas fa-map-marker-alt mt-1 mr-2 text-blue-400"></i>
+                            <span><span class="font-medium">Destination:</span> {{ destination.nom }}</span>
+                        </div>
+                        {% if user_role == 'saisie_er' %}
+                        <div class="flex items-start">
+                            <i class="fas fa-briefcase mt-1 mr-2 text-blue-400"></i>
+                            <span><span class="font-medium">Service:</span> {{ lettre.service }}</span>
+                        </div>
+                        {% endif %}
+                        {% if lettre.format != 'Autre' %}
+                        <div class="flex items-start">
+                            <i class="fas fa-file-alt mt-1 mr-2 text-blue-400"></i>
+                            <span>
+                                <span class="font-medium">Format:</span> {{ lettre.format }}
+                                <span class="text-xs text-gray-500 ml-1">
+                                    ({% if lettre.format == 'Excel' %}.xls, .xlsx{% elif lettre.format == 'PDF' %}.pdf{% elif lettre.format == 'Word' %}.doc, .docx{% else %}.xls, .xlsx, .pdf, .doc, .docx{% endif %})
+                                </span>
+                            </span>
+                        </div>
+                        {% endif %}
+                        {% if form.instance.response_file %}
+                        <div class="flex items-start">
+                            <i class="fas fa-paperclip mt-1 mr-2 text-blue-400"></i>
+                            <span>
+                                <span class="font-medium">Fichier actuel:</span>
+                                <a href="{{ form.instance.response_file.url }}" target="_blank" 
+                                   class="text-blue-500 hover:underline ml-1">
+                                    {{ form.instance.response_file.name|slice:"15:" }}
+                                </a>
+                            </span>
+                        </div>
+                        {% endif %}
+                        {% if lettre.response_template %}
+                        <div class="flex items-start">
+                            <i class="fas fa-file-download mt-1 mr-2 text-blue-400"></i>
+                            <span>
+                                <span class="font-medium">Template de réponse:</span>
+                                <a href="{{ lettre.response_template.url }}" target="_blank" 
+                                   class="text-blue-500 hover:underline ml-1">
+                                    {{ lettre.response_template.name|slice:"15:" }}
+                                </a>
+                            </span>
+                        </div>
+                        {% endif %}
+                        {% if lettre.image_file %}
+                        <div class="flex items-start">
+                            <i class="fas fa-image mt-1 mr-2 text-blue-400"></i>
+                            <span>
+                                <span class="font-medium">Image de la requête:</span>
+                                <a href="{{ lettre.image_file.url }}" target="_blank" 
+                                   class="text-blue-500 hover:underline ml-1">
+                                    {{ lettre.image_file.name|slice:"15:" }}
+                                </a>
+                            </span>
+                        </div>
+                        {% endif %}
+
+                        {% if form.instance.approval_status == 'revision_requested' %}
+    <div class="alert alert-warning">
+        <strong>Révision demandée :</strong> {{ form.instance.revision_comments }}
+    </div>
+{% endif %}
+<!-- ... form fields ... -->
+                    </div>
+                </div>
+                
+                <!-- Form -->
+                <form id="response-form" method="post" enctype="multipart/form-data" class="space-y-6">
+                    {% csrf_token %}
+                    <!-- Hidden Fields -->
+                    <input type="hidden" name="statut" value="repondu">
+                    <input type="hidden" name="date_reponse" value="{% now 'Y-m-d' %}">
+                    <input type="hidden" name="temps_reponse" value="0">
+                    
+                    <!-- Non-field Errors -->
+                    {% if form.non_field_errors %}
+                    <div class="text-sm text-red-600">
+                        {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                 
+                    <!-- Comments Field -->
+                    <div>
+                        <label for="{{ form.commentaires.id_for_label }}" 
+                               class="block text-sm font-medium text-gray-700 mb-1">
+                            <i class="fas fa-comment-dots mr-1 text-blue-400"></i>
+                            Commentaires (optionnel)
+                        </label>
+                        <div class="mt-1 relative rounded-md shadow-sm">
+                            {{ form.commentaires }}
+                        </div>
+                        {% if form.commentaires.errors %}
+                        <p class="error-message">{{ form.commentaires.errors.as_text }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- File Upload -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                        <div class="bg-gradient-to-r from-blue-50 to-blue-100 p-3 border-b border-gray-200">
+                            <h3 class="flex items-center text-sm font-semibold text-blue-700">
+                                <i class="fas fa-file-alt mr-2"></i> Fichier de réponse
+                            </h3>
+                        </div>
+                        <div class="p-4 border-2 border-dashed border-blue-200 rounded-md text-center cursor-pointer file-upload">
+                            {{ form.response_file }}
+                            <label for="{{ form.response_file.id_for_label }}" class="block p-4 cursor-pointer">
+                                <i class="fas fa-upload text-blue-400 text-2xl mb-2"></i>
+                                <p class="text-sm text-blue-600 font-medium">Glissez-déposez ou cliquez pour télécharger</p>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Formats supportés: {% if lettre.format == 'Excel' %}.xls, .xlsx{% elif lettre.format == 'PDF' %}.pdf{% elif lettre.format == 'Word' %}.doc, .docx{% else %}.xls, .xlsx, .pdf, .doc, .docx{% endif %}
+                                </p>
+                            </label>
+                            <div id="response-file-display" class="mt-4 hidden">
+                                <div class="flex items-center justify-between bg-blue-50 p-2 rounded-md">
+                                    <div class="flex items-center space-x-2">
+                                        <i class="fas fa-file-alt text-blue-500"></i>
+                                        <span class="text-sm text-blue-700 truncate file-name"></span>
+                                    </div>
+                                    <button type="button" onclick="clearFile('{{ form.response_file.id_for_label }}', 'response-file-display')" 
+                                            class="text-red-500 hover:bg-red-50 p-1 rounded-full">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% if form.response_file.errors %}
+                        <p class="error-message">{{ form.response_file.errors.as_text }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                        <button type="button" onclick="closeResponseModal()"
+                                class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <i class="fas fa-times mr-2"></i> Annuler
+                        </button>
+                        <button type="submit" 
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <i class="fas fa-save mr-2"></i> Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</main>
+
+{% block extra_js %}
+<script>
+    function clearFile(inputId, displayId) {
+        const fileInput = document.getElementById(inputId);
+        const fileDisplay = document.getElementById(displayId);
+        fileInput.value = ''; // Clear the file input
+        fileDisplay.classList.add('hidden'); // Hide the display
+        fileDisplay.querySelector('span').textContent = ''; // Clear the file name
+    }
+
+    function closeResponseModal() {
+        const modal = document.getElementById('responseModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+        // Reset file input and display
+        clearFile('response-file-upload', 'response-file-display');
+        // Redirect back to dashboard
+        window.location.href = "{% url 'lettres:dashboard_Reponse' %}";
+    }
+
+    document.getElementById('response-file-upload').addEventListener('change', function(event) {
+        const fileInput = event.target;
+        const fileDisplay = document.getElementById('response-file-display');
+        const fileNameSpan = fileDisplay.querySelector('span');
+        if (fileInput.files.length > 0) {
+            fileNameSpan.textContent = fileInput.files[0].name;
+            fileDisplay.classList.remove('hidden');
+        } else {
+            fileNameSpan.textContent = '';
+            fileDisplay.classList.add('hidden');
+        }
+    });
+
+    // Show modal on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        openModal('responseModal');
+    });
+
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('active');
+        }
+    }
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,359 @@
+{% extends 'menu/base.html' %}
+{% load static %}
+
+{% block title %}
+Détails de la Réponse - {{ lettre.subject }}
+{% endblock %}
+
+{% block header_title %}
+Détails de la Réponse
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 50;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+        background: white;
+        border-radius: 0.75rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        max-width: 700px;
+        width: 90%;
+    }
+    .animate-fade-in {
+        animation: fadeIn 0.3s ease-out forwards;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .request-image {
+        max-width: 100%;
+        max-height: 200px;
+        object-fit: contain;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s ease;
+    }
+    .request-image:hover {
+        transform: scale(1.02);
+    }
+    .detail-card {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        border: 1px solid #e5e7eb;
+        transition: box-shadow 0.2s ease;
+    }
+    .detail-card:hover {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1.25rem;
+    }
+    .info-item {
+        display: flex;
+        flex-direction: column;
+    }
+    .info-label {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-bottom: 0.25rem;
+        font-weight: 500;
+    }
+    .info-value {
+        font-weight: 500;
+        color: #111827;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .icon-wrapper {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        margin-right: 0.75rem;
+    }
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    .btn-primary {
+        background-color: #3b82f6;
+        color: white;
+        border: 1px solid #3b82f6;
+    }
+    .btn-primary:hover {
+        background-color: #2563eb;
+        border-color: #2563eb;
+        transform: translateY(-1px);
+    }
+    .btn-secondary {
+        background-color: white;
+        color: #374151;
+        border: 1px solid #d1d5db;
+    }
+    .btn-secondary:hover {
+        background-color: #f9fafb;
+        transform: translateY(-1px);
+    }
+    .btn-accept {
+        background-color: #10b981;
+        color: white;
+        border: 1px solid #10b981;
+    }
+    .btn-accept:hover {
+        background-color: #059669;
+        border-color: #059669;
+        transform: translateY(-1px);
+    }
+    .btn-revision {
+        background-color: #f59e0b;
+        color: white;
+        border: 1px solid #f59e0b;
+    }
+    .btn-revision:hover {
+        background-color: #d97706;
+        border-color: #d97706;
+        transform: translateY(-1px);
+    }
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .file-link {
+        display: inline-flex;
+        align-items: center;
+        color: #3b82f6;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+    .file-link:hover {
+        color: #2563eb;
+        text-decoration: underline;
+    }
+    .alert {
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .alert-warning {
+        background-color: #fef3c7;
+        color: #92400e;
+        border: 1px solid #f59e0b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="flex-1 overflow-auto p-6">
+    <div class="modal">
+        <div class="modal-content animate-fade-in">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+                <div class="flex items-center">
+                    <div class="icon-wrapper bg-blue-100 text-blue-600">
+                        <i class="fas fa-eye"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800">
+                            Détails de la Réponse
+                        </h2>
+                        <p class="text-sm text-gray-500 mt-1">
+                            <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                                {{ lettre.category }}
+                            </span>
+                            • {{ destination.nom }}
+                        </p>
+                    </div>
+                </div>
+                <a href="{% url 'lettres:dashboard_Reponse' %}" class="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-1 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-xl"></i>
+                </a>
+            </div>
+
+            <!-- Content -->
+            <div class="p-6 space-y-6">
+                <!-- Subject Card -->
+                <div class="detail-card p-5">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2 flex items-center">
+                        <div class="icon-wrapper bg-blue-100 text-blue-600 mr-3">
+                            <i class="fas fa-envelope-open-text"></i>
+                        </div>
+                        {{ lettre.subject }}
+                    </h3>
+                    <p class="text-gray-500 text-sm">
+                        Requête reçue le {{ lettre.date|date:"d/m/Y" }}
+                    </p>
+                </div>
+
+                <!-- Information Grid -->
+                <div class="info-grid">
+                    <div class="detail-card p-4">
+                        <div class="info-item">
+                            <span class="info-label">Date de réponse</span>
+                            <span class="info-value">
+                                <i class="fas fa-calendar-check text-blue-500"></i>
+                                {% if response.date_reponse %}
+                                    {{ response.date_reponse|date:"d/m/Y" }}
+                                {% else %}
+                                    <span class="text-yellow-600">Non répondu</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="detail-card p-4">
+                        <div class="info-item">
+                            <span class="info-label">Échéance</span>
+                            <span class="info-value">
+                                <i class="fas fa-clock text-blue-500"></i>
+                                {{ lettre.deadline|date:"d/m/Y" }}
+                                {% if response.statut != 'repondu' %}
+                                    {% if lettre.is_overdue %}
+                                        <span class="status-badge bg-red-100 text-red-800">
+                                            <i class="fas fa-exclamation-circle mr-1"></i>
+                                            {{ lettre.days_overdue }}j retard
+                                        </span>
+                                    {% elif lettre.days_until_deadline <= 2 %}
+                                        <span class="status-badge bg-orange-100 text-orange-800">
+                                            <i class="fas fa-hourglass-half mr-1"></i>
+                                            {{ lettre.days_until_deadline }}j restant
+                                        </span>
+                                    {% endif %}
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                   
+
+                    <div class="detail-card p-4">
+                        <div class="info-item">
+                            <span class="info-label">Statut</span>
+                            <span class="info-value">
+                                <i class="fas fa-tasks text-blue-500"></i>
+                                <span class="status-badge 
+                                    {% if response.statut == 'en_attente' %}bg-yellow-100 text-yellow-800
+                                    {% elif response.statut == 'repondu' %}bg-green-100 text-green-800
+                                    {% else %}bg-red-100 text-red-800{% endif %}">
+                                    {% if response.statut == 'en_attente' %}
+                                        <i class="fas fa-clock mr-1"></i>
+                                    {% elif response.statut == 'repondu' %}
+                                        <i class="fas fa-check-circle mr-1"></i>
+                                    {% else %}
+                                        <i class="fas fa-times-circle mr-1"></i>
+                                    {% endif %}
+                                    {{ response.get_statut_display|default:"En attente"|capfirst }}
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="detail-card p-4">
+                        <div class="info-item">
+                            <span class="info-label">Commentaires</span>
+                            <span class="info-value">
+                                <i class="fas fa-comment text-blue-500"></i>
+                                {{ response.commentaires|default:"Aucun commentaire" }}
+                            </span>
+                        </div>
+                    </div>
+
+                    {% if response.response_file %}
+                    <div class="detail-card p-4">
+                        <div class="info-item">
+                            <span class="info-label">Fichier de réponse</span>
+                            <a href="{{ response.response_file.url }}" target="_blank" class="file-link info-value">
+                                <i class="fas fa-paperclip mr-2"></i>
+                                {{ response.response_file.name|slice:"15:" }}
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if lettre.response_template %}
+                    <div class="detail-card p-4">
+                        <div class="info-item">
+                            <span class="info-label">Template de réponse</span>
+                            <a href="{{ lettre.response_template.url }}" target="_blank" class="file-link info-value">
+                                <i class="fas fa-file-download mr-2"></i>
+                                {{ lettre.response_template.name|slice:"15:" }}
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Image Section -->
+                {% if lettre.image_file %}
+                <div class="detail-card p-5">
+                    <h3 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                        <div class="icon-wrapper bg-blue-100 text-blue-600 mr-3">
+                            <i class="fas fa-image"></i>
+                        </div>
+                        Image de la Requête
+                    </h3>
+                    <div class="mt-2">
+                        <a href="{{ lettre.image_file.url }}" target="_blank" class="file-link">
+                            <img src="{{ lettre.image_file.url }}" alt="Image de la Requête" class="request-image mx-auto">
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+                {% if response.approval_status == 'revision_requested' %}
+        <div class="alert alert-warning">
+            <strong>Révision demandée :</strong> {{ response.revision_comments }}
+        </div>
+    {% endif %}
+
+                <!-- Actions -->
+                <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                    <a href="{% url 'lettres:dashboard_Reponse' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left mr-2"></i> Retour
+                    </a>
+                    <a href="{% url 'lettres:submit_response' lettre.id %}" class="btn btn-primary">
+                        <i class="fas fa-edit mr-2"></i> Modifier la réponse
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}         

@@ -1,0 +1,724 @@
+{% load static %}
+<div class="p-6 max-w-4xl w-full bg-white rounded-lg shadow-lg">
+    <!-- Modal Header -->
+    <div class="flex justify-between items-center pb-4 border-b border-gray-200">
+        <h2 class="text-2xl font-bold text-gray-900">Nouvelle Requête</h2>
+        <button type="button" onclick="closeModal('newLettreModal')" class="text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <!-- Section Navigation -->
+    <div class="sticky top-0 z-10 bg-white pt-4 pb-2 border-b border-gray-200">
+        <div class="flex space-x-4">
+            <button type="button" class="section-button px-4 py-2 rounded-t-md font-medium transition-colors bg-blue-100 text-blue-700 border-b-2 border-blue-700" data-section="basic-info" onclick="setActiveSection('basic-info')">
+                Informations de base
+            </button>
+            <button type="button" class="section-button px-4 py-2 rounded-t-md font-medium transition-colors text-gray-600 hover:bg-gray-100" data-section="details" onclick="setActiveSection('details')">
+                Détails
+            </button>
+            <button type="button" class="section-button px-4 py-2 rounded-t-md font-medium transition-colors text-gray-600 hover:bg-gray-100" data-section="attachments" onclick="setActiveSection('attachments')">
+                Pièces jointes
+            </button>
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" action="{% url 'lettres:new_lettres' %}" id="new-lettre-form" class="space-y-6 p-6">
+        {% csrf_token %}
+        <input type="hidden" name="submission_id" id="submission-id">
+
+        <!-- Basic Info Section -->
+        <div id="basic-info" class="form-section">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Subject -->
+                <div class="space-y-2">
+                    <label for="{{ form.subject.id_for_label }}" class="block text-sm font-medium text-gray-700">Sujet <span class="text-red-500">*</span></label>
+                    {{ form.subject }}
+                </div>
+                
+                <!-- Category -->
+                <div class="space-y-2">
+                    <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700">Catégorie <span class="text-red-500">*</span></label>
+                    {{ form.category }}
+                </div>
+                
+                <!-- Date -->
+                <div class="space-y-2">
+                    <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-700">Date de réception <span class="text-red-500">*</span></label>
+                    {{ form.date }}
+                </div>
+                
+                <!-- Deadline -->
+                <div class="space-y-2">
+                    <label for="{{ form.deadline.id_for_label }}" class="block text-sm font-medium text-gray-700">Date limite de réponse <span class="text-red-500">*</span></label>
+                    {{ form.deadline }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Details Section -->
+        <div id="details" class="form-section" style="display: none;">
+            <div class="space-y-6">
+                <!-- Destinations Card -->
+                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
+                    <div class="space-y-4">
+                        <div class="space-y-2">
+                            {% if user_role == 'saisie_ec' or user_role == 'admin_saisie' %}
+                            <!-- Predefined destination for saisie_ec or admin_saisie users -->
+                            <label class="block text-sm font-medium text-gray-700">Destination concernée <span class="text-red-500">*</span></label>
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       name="destinations_display" 
+                                       id="id_destinations_{{ user_profile.destination.id|default:'unknown' }}" 
+                                       checked="checked" 
+                                       disabled="disabled" 
+                                       class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 opacity-50 cursor-not-allowed">
+                                <label for="id_destinations_{{ user_profile.destination.id|default:'unknown' }}" class="ml-2 text-sm font-semibold text-gray-900">
+                                    {{ request.user.userprofile.destination.nom|default:"N/A" }}
+                                </label>
+                                <!-- Hidden input to ensure submission -->
+                                <input type="hidden" 
+                                       name="destinations" 
+                                       value="{{ user_profile.destination.id|default:'' }}">
+                            </div>
+                            {% else %}
+                            <!-- Interactive destinations for non-restricted users -->
+                            <div class="flex justify-between items-center">
+                                <label class="block text-sm font-medium text-gray-700">Destinations concernées <span class="text-red-500">*</span></label>
+                                <div class="flex items-center space-x-2">
+                                    {{ form.sent_to_all_destinations }}
+                                    <label for="{{ form.sent_to_all_destinations.id_for_label }}" class="text-sm text-gray-600">Tout sélectionner</label>
+                                </div>
+                            </div>
+                            <div id="destinations-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-2">
+                                {% for checkbox in form.destinations %}
+                                <div class="flex items-center">
+                                    {{ checkbox.tag }}
+                                    <label for="{{ checkbox.id_for_label }}" class="ml-2 text-sm text-gray-700">
+                                        {{ checkbox.choice_label }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Services Card -->
+<div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
+    <div class="space-y-2">
+        <label class="block text-sm font-medium text-gray-700">Service concerné <span class="text-red-500">*</span></label>
+        {% if user_role == 'saisie_ec' %}
+            <!-- Display service name for saisie_ec users -->
+            <div class="flex items-center">
+                <span class="text-sm font-semibold text-gray-900">{{ request.user.userprofile.get_service_display|default:"N/A" }}</span>
+                <!-- Hidden input to ensure submission -->
+                <input type="hidden" name="service" value="{{ user_profile.service|default:'SGP' }}">
+            </div>
+        {% else %}
+            <!-- Interactive services for non-saisie_ec users (including admin_saisie) -->
+            <div id="services-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
+                {% for radio in form.service %}
+                <div class="flex items-center">
+                    {{ radio.tag }}
+                    <label for="{{ radio.id_for_label }}" class="ml-2 text-sm text-gray-700">
+                        {{ radio.choice_label }}
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+            <p id="maritime-warning" class="text-xs text-red-500 mt-2 italic hidden">
+                Le service <strong>MARITIME</strong> est disponible uniquement pour <strong>Nador</strong> ou <strong>Driouch</strong>.
+            </p>
+        {% endif %}
+    </div>
+</div>
+                <!-- Format Card -->
+                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Format de la requête <span class="text-red-500">*</span></label>
+                        <div id="format-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
+                            {% for radio in form.format %}
+                            <div class="flex items-center">
+                                {{ radio.tag }}
+                                <label for="{{ radio.id_for_label }}" class="ml-2 text-sm text-gray-700">
+                                    {{ radio.choice_label }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Priority Card -->
+                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
+                    <div class="space-y-2 relative">
+                        <label class="block text-sm font-medium text-gray-700">Priorité</label>
+                        <div class="relative">
+                            <button type="button" onclick="togglePriorityDropdown()" 
+                                    class="w-full p-2 border border-gray-300 rounded-md flex items-center justify-between bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-150">
+                                <span id="selected-priority" class="flex items-center space-x-2">
+                                    <span id="priority-indicator" class="w-3 h-3 rounded-full bg-yellow-500"></span>
+                                    <span id="priority-label">Moyenne</span>
+                                </span>
+                                <i class="fas fa-chevron-down text-gray-500 transition-transform duration-200" id="priority-chevron"></i>
+                            </button>
+                            {{ form.priority }}
+                            <div id="priority-dropdown" class="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg hidden divide-y divide-gray-200">
+                                {% for value, label in form.priority.field.choices %}
+                                    <div onclick="selectPriority('{{ value }}', '{{ label }}')" 
+                                         class="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center space-x-2 transition-colors duration-150
+                                         {% if value == 'low' %}text-green-600
+                                         {% elif value == 'medium' %}text-yellow-600
+                                         {% elif value == 'high' %}text-red-600
+                                         {% endif %}">
+                                        <span class="w-3 h-3 rounded-full 
+                                            {% if value == 'low' %}bg-green-500
+                                            {% elif value == 'medium' %}bg-yellow-500
+                                            {% elif value == 'high' %}bg-red-500
+                                            {% endif %}"></span>
+                                        <span>{{ label }}</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
+                    <div class="space-y-2">
+                        <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700">Description</label>
+                        {{ form.description }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attachments Section -->
+        <div id="attachments" class="form-section" style="display: none;">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Image Upload -->
+                <div class="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                    <div class="bg-gradient-to-r from-blue-50 to-blue-100 p-3 border-b border-gray-200">
+                        <h3 class="flex items-center text-sm font-semibold text-blue-700">
+                            <i class="fas fa-image mr-2"></i> Image de la Requête
+                        </h3>
+                    </div>
+                    <div class="p-4 border-2 border-dashed border-blue-200 rounded-md text-center cursor-pointer hover:bg-blue-50 transition-colors">
+                        {{ form.image_file }}
+                        <label for="{{ form.image_file.id_for_label }}" class="block p-4 cursor-pointer">
+                            <i class="fas fa-upload text-blue-400 text-2xl mb-2"></i>
+                            <p class="text-sm text-blue-600 font-medium">Glissez-déposez ou cliquez pour télécharger</p>
+                            <p class="text-xs text-gray-500 mt-1">Formats supportés: JPG, PNG, GIF (max 5MB)</p>
+                        </label>
+                        <div id="image-file-display" class="mt-4 hidden">
+                            <div class="flex items-center justify-between bg-blue-50 p-2 rounded-md">
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-image text-blue-500"></i>
+                                    <span class="text-sm text-blue-700 truncate"></span>
+                                </div>
+                                <button type="button" onclick="clearFile('{{ form.image_file.id_for_label }}', 'image-file-display')" class="text-red-500 hover:bg-red-50 p-1 rounded-full">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Template Upload -->
+                <div class="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                    <div class="bg-gradient-to-r from-green-50 to-green-100 p-3 border-b border-gray-200">
+                        <h3 class="flex items-center text-sm font-semibold text-green-700">
+                            <i class="fas fa-file-alt mr-2"></i> Template de réponse
+                        </h3>
+                    </div>
+                    <div class="p-4 border-2 border-dashed border-green-200 rounded-md text-center cursor-pointer hover:bg-green-50 transition-colors">
+                        {{ form.response_template }}
+                        <label for="{{ form.response_template.id_for_label }}" class="block p-4 cursor-pointer">
+                            <i class="fas fa-upload text-green-400 text-2xl mb-2"></i>
+                            <p class="text-sm text-green-600 font-medium">Glissez-déposez ou cliquez pour télécharger</p>
+                            <p class="text-xs text-gray-500 mt-1">Formats supportés: Excel, PDF (max 10MB)</p>
+                        </label>
+                        <div id="template-file-display" class="mt-4 hidden">
+                            <div class="flex items-center justify-between bg-green-50 p-2 rounded-md">
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-file-alt text-green-500"></i>
+                                    <span class="text-sm text-green-700 truncate"></span>
+                                </div>
+                                <button type="button" onclick="clearFile('{{ form.response_template.id_for_label }}', 'template-file-display')" class="text-red-500 hover:bg-red-50 p-1 rounded-full">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+            <div class="flex space-x-3">
+                <button type="button" id="prev-button" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 hidden" onclick="navigateSection('prev')">Précédent</button>
+                <button type="button" id="next-button" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" onclick="navigateSection('next')">Suivant</button>
+            </div>
+            <div class="flex space-x-3" id="submit-buttons" style="display: none;">
+                <button type="button" onclick="closeModal('newLettreModal')" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">Annuler</button>
+                <button type="submit" id="submit-button" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 relative">
+                    <span class="submit-text">Enregistrer la Requête</span>
+                    <span class="loading-spinner hidden absolute inset-0 flex items-center justify-center">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Debug Information (for troubleshooting) -->
+    <div class="mt-4 p-4 bg-gray-100 rounded-lg hidden">
+        <h3 class="text-sm font-medium text-gray-700">Debug Info</h3>
+        <pre>{{ request.user.userprofile|pprint }}</pre>
+    </div>
+</div>
+
+<style>
+    input[type="text"],
+    input[type="date"],
+    select,
+    textarea {
+        @apply w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500;
+    }
+    
+    input[type="checkbox"],
+    input[type="radio"] {
+        @apply h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500;
+    }
+    
+    input[type="radio"] {
+        @apply rounded-full;
+    }
+    
+    input[type="checkbox"]:disabled,
+    input[type="radio"]:disabled {
+        @apply opacity-50 cursor-not-allowed;
+    }
+    
+    .card {
+        @apply border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm;
+    }
+    
+    .file-upload-area {
+        @apply p-4 border-2 border-dashed rounded-md text-center cursor-pointer transition-colors;
+    }
+    
+    #priority-dropdown div {
+        transition: background-color 0.2s ease;
+    }
+    
+    #priority-dropdown div:hover {
+        background-color: #f9fafb;
+    }
+    
+    #priority-chevron {
+        transition: transform 0.2s ease;
+    }
+    
+    #priority-chevron.rotate-180 {
+        transform: rotate(180deg);
+    }
+    
+    .priority-low {
+        color: #059669;
+    }
+    
+    .priority-medium {
+        color: #d97706;
+    }
+    
+    .priority-high {
+        color: #dc2626;
+    }
+    
+    @media (min-width: 640px) {
+        .responsive-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+    
+    @media (min-width: 768px) {
+        .responsive-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+</style>
+
+<script>
+    // Generate UUID for submission tracking
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    // Initialize form
+    setActiveSection('basic-info');
+
+    // Update file display
+    function updateFileDisplay(inputId, displayId) {
+        const input = document.getElementById(inputId);
+        const display = document.getElementById(displayId);
+        if (input.files && input.files[0]) {
+            display.querySelector('span').textContent = input.files[0].name;
+            display.classList.remove('hidden');
+        }
+    }
+
+    // Clear file input
+    function clearFile(inputId, displayId) {
+        const input = document.getElementById(inputId);
+        const display = document.getElementById(displayId);
+        input.value = '';
+        display.classList.add('hidden');
+    }
+
+    // Toggle all destinations
+    function toggleAllDestinations() {
+        const allCheckbox = document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}');
+        const destinationCheckboxes = document.querySelectorAll('#destinations-container input[type="checkbox"]');
+        destinationCheckboxes.forEach(checkbox => {
+            checkbox.checked = allCheckbox.checked;
+        });
+        updateServiceAvailability();
+    }
+
+    // Section navigation
+    function setActiveSection(sectionId) {
+        document.querySelectorAll('.form-section').forEach(section => {
+            section.style.display = section.id === sectionId ? 'block' : 'none';
+        });
+        
+        document.querySelectorAll('.section-button').forEach(button => {
+            const isActive = button.dataset.section === sectionId;
+            button.classList.toggle('bg-blue-100', isActive);
+            button.classList.toggle('text-blue-700', isActive);
+            button.classList.toggle('border-b-2', isActive);
+            button.classList.toggle('border-blue-700', isActive);
+            button.classList.toggle('text-gray-600', !isActive);
+            button.classList.toggle('hover:bg-gray-100', !isActive);
+        });
+
+        const prevButton = document.getElementById('prev-button');
+        const nextButton = document.getElementById('next-button');
+        const submitButtons = document.getElementById('submit-buttons');
+        
+        if (sectionId === 'basic-info') {
+            prevButton.style.display = 'none';
+            nextButton.style.display = 'inline-flex';
+            submitButtons.style.display = 'none';
+        } else if (sectionId === 'details') {
+            prevButton.style.display = 'inline-flex';
+            nextButton.style.display = 'inline-flex';
+            submitButtons.style.display = 'none';
+        } else if (sectionId === 'attachments') {
+            prevButton.style.display = 'inline-flex';
+            nextButton.style.display = 'none';
+            submitButtons.style.display = 'flex';
+        }
+    }
+
+    // Navigate between sections
+    function navigateSection(direction) {
+        const sections = ['basic-info', 'details', 'attachments'];
+        const currentSection = Array.from(document.querySelectorAll('.form-section')).find(section => section.style.display === 'block').id;
+        const currentIndex = sections.indexOf(currentSection);
+        let nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+
+        if (nextIndex >= 0 && nextIndex < sections.length) {
+            setActiveSection(sections[nextIndex]);
+        }
+    }
+
+    // Toggle priority dropdown
+    function togglePriorityDropdown() {
+        const dropdown = document.getElementById('priority-dropdown');
+        const chevron = document.getElementById('priority-chevron');
+        dropdown.classList.toggle('hidden');
+        chevron.classList.toggle('rotate-180');
+    }
+
+    // Select priority with colored indicators
+    function selectPriority(value, label) {
+        const priorityField = document.getElementById('{{ form.priority.id_for_label }}');
+        const priorityIndicator = document.getElementById('priority-indicator');
+        const priorityLabel = document.getElementById('priority-label');
+        
+        priorityField.value = value;
+        priorityLabel.textContent = label;
+        
+        switch(value) {
+            case 'low':
+                priorityIndicator.className = 'w-3 h-3 rounded-full bg-green-500';
+                break;
+            case 'medium':
+                priorityIndicator.className = 'w-3 h-3 rounded-full bg-yellow-500';
+                break;
+            case 'high':
+                priorityIndicator.className = 'w-3 h-3 rounded-full bg-red-500';
+                break;
+        }
+        
+        document.getElementById('priority-dropdown').classList.add('hidden');
+        document.getElementById('priority-chevron').classList.remove('rotate-180');
+    }
+
+    // Service availability based on destinations
+    function updateServiceAvailability() {
+        const allDestinationsChecked = document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}')?.checked;
+        const selectedDestinations = Array.from(document.querySelectorAll('#destinations-container input[type="checkbox"]:checked')).map(cb => cb.nextElementSibling.textContent.trim());
+        const maritimeService = document.querySelector('#services-container input[value="MARITIME"]');
+        const onlyNadorOrDriouch = selectedDestinations.every(dest => ['Nador', 'Driouch'].includes(dest));
+        const maritimeWarning = document.getElementById('maritime-warning');
+
+        {% if user_role != 'saisie_ec' %}
+        if (allDestinationsChecked || selectedDestinations.length === 0 || !onlyNadorOrDriouch) {
+            if (maritimeService) {
+                maritimeService.disabled = true;
+                if (maritimeService.checked) {
+                    maritimeService.checked = false;
+                    const firstAvailableService = document.querySelector('#services-container input[type="radio"]:not([value="MARITIME"])');
+                    if (firstAvailableService) {
+                        firstAvailableService.checked = true;
+                    }
+                }
+            }
+            maritimeWarning?.classList.remove('hidden');
+        } else {
+            if (maritimeService) {
+                maritimeService.disabled = false;
+            }
+            maritimeWarning?.classList.add('hidden');
+        }
+        {% endif %}
+    }
+
+    // Form submission validation and handling
+    let isSubmitting = false;
+    let submissionId = null;
+
+    function handleSubmit(event) {
+    event.preventDefault();
+    
+    if (isSubmitting) {
+        console.log('Submission already in progress');
+        return false;
+    }
+
+    const form = document.getElementById('new-lettre-form');
+    const submitButton = document.getElementById('submit-button');
+    const submitText = submitButton.querySelector('.submit-text');
+    const loadingSpinner = submitButton.querySelector('.loading-spinner');
+    const submissionIdField = document.getElementById('submission-id');
+
+    submissionId = generateUUID();
+    submissionIdField.value = submissionId;
+
+    // Client-side validation
+    const subject = document.getElementById('{{ form.subject.id_for_label }}').value;
+    const category = document.getElementById('{{ form.category.id_for_label }}').value;
+    const date = document.getElementById('{{ form.date.id_for_label }}').value;
+    const deadline = document.getElementById('{{ form.deadline.id_for_label }}').value;
+    const selectedDestinations = Array.from(document.querySelectorAll('#destinations-container input[type="checkbox"]:checked'));
+    const selectedService = document.querySelector('#services-container input[type="radio"]:checked') || document.querySelector('input[name="service"]');
+    const selectedFormat = document.querySelector('#format-container input[type="radio"]:checked');
+
+    console.log('Selected service:', selectedService ? selectedService.value : 'None');
+
+    if (!subject) {
+        alert('Veuillez entrer un sujet.');
+        submissionIdField.value = '';
+        return false;
+    }
+    if (!category) {
+        alert('Veuillez sélectionner une catégorie.');
+        submissionIdField.value = '';
+        return false;
+    }
+    if (!date) {
+        alert('Veuillez entrer une date de réception.');
+        submissionIdField.value = '';
+        return false;
+    }
+    if (!deadline) {
+        alert('Veuillez entrer une date limite de réponse.');
+        submissionIdField.value = '';
+        return false;
+    }
+    {% if user_role != 'saisie_ec' and user_role != 'admin_saisie' %}
+    if (selectedDestinations.length === 0 && !document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}')?.checked) {
+        alert('Veuillez sélectionner au moins une destination ou cocher "Tout sélectionner".');
+        submissionIdField.value = '';
+        return false;
+    }
+    {% endif %}
+    if (!selectedService) {
+        alert('Veuillez sélectionner un service.');
+        submissionIdField.value = '';
+        return false;
+    }
+    if (!selectedFormat) {
+        alert('Veuillez sélectionner un format de la requête.');
+        submissionIdField.value = '';
+        return false;
+    }
+
+    isSubmitting = true;
+    submitButton.disabled = true;
+    submitText.classList.add('hidden');
+    loadingSpinner.classList.remove('hidden');
+    form.classList.add('opacity-50', 'pointer-events-none');
+
+    const formData = new FormData(form);
+    console.log('Form data service:', formData.get('service')); // Debug log
+
+    fetch("{% url 'lettres:new_lettres' %}", {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-Submission-ID': submissionId
+        }
+    })
+    .then(async response => {
+        console.log('Response Status:', response.status, 'Submission ID:', submissionId);
+        const contentType = response.headers.get('content-type');
+        let data;
+        if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            data = await response.text();
+            console.log('Unexpected Response:', data.substring(0, 100));
+            throw new Error('Une erreur inattendue s’est produite sur le serveur.');
+        }
+        if (!response.ok) {
+            throw new Error(data.errors || `Erreur ${response.status}`);
+        }
+        return data;
+    })
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'Requête créée avec succès !');
+            closeModal('newLettreModal');
+            form.reset();
+            window.location.href = "{% url 'lettres:dashboard' %}";
+        } else {
+            let errorMessage = 'Erreur lors de l\'enregistrement de la requête.';
+            if (data.errors) {
+                if (typeof data.errors === 'object') {
+                    errorMessage = Object.entries(data.errors).map(([field, errors]) => 
+                        `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`
+                    ).join('\n');
+                } else {
+                    errorMessage = data.errors;
+                }
+            }
+            alert(errorMessage);
+        }
+    })
+    .catch(error => {
+        console.error('Submission Error:', error.message, 'Submission ID:', submissionId);
+        alert(error.message || 'Une erreur est survenue. Veuillez réessayer ou contactez l’administrateur.');
+    })
+    .finally(() => {
+        isSubmitting = false;
+        submitButton.disabled = false;
+        submitText.classList.remove('hidden');
+        loadingSpinner.classList.add('hidden');
+        form.classList.remove('opacity-50', 'pointer-events-none');
+        submissionIdField.value = '';
+        submissionId = null;
+    });
+    
+    return false;
+}
+   
+
+    // Initialize event listeners with proper cleanup
+    function initializeEventListeners() {
+        // Remove any existing listeners first
+        const form = document.getElementById('new-lettre-form');
+        if (!form) return;
+        
+        // Clone and replace the form to remove all existing event listeners
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+        
+        // Add the submit event listener to the new form
+        document.getElementById('new-lettre-form').addEventListener('submit', handleSubmit);
+        
+        // Add other event listeners
+        {% if user_role == 'saisie_ec' or user_role == 'admin_saisie' %}
+        document.querySelectorAll('input[type="checkbox"][disabled], input[type="radio"]:disabled').forEach(input => {
+            input.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+        {% else %}
+        const allDestinationsCheckbox = document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}');
+        if (allDestinationsCheckbox) {
+            allDestinationsCheckbox.addEventListener('change', toggleAllDestinations);
+        }
+        
+        document.querySelectorAll('#destinations-container input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (allDestinationsCheckbox) {
+                    allDestinationsCheckbox.checked = false;
+                }
+                updateServiceAvailability();
+            });
+        });
+        {% endif %}
+        
+        document.getElementById('{{ form.image_file.id_for_label }}').addEventListener('change', () => 
+            updateFileDisplay('{{ form.image_file.id_for_label }}', 'image-file-display'));
+        
+        document.getElementById('{{ form.response_template.id_for_label }}').addEventListener('change', () => 
+            updateFileDisplay('{{ form.response_template.id_for_label }}', 'template-file-display'));
+        
+        updateServiceAvailability();
+        
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('priority-dropdown');
+            const priorityButton = document.querySelector('[onclick="togglePriorityDropdown()"]');
+            if (dropdown && priorityButton && !dropdown.contains(event.target) && !priorityButton.contains(event.target)) {
+                dropdown.classList.add('hidden');
+                document.getElementById('priority-chevron').classList.remove('rotate-180');
+            }
+        });
+    }
+
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeEventListeners();
+    });
+
+    // Close modal function
+    window.closeModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'none';
+            // Reset form state
+            const form = document.getElementById('new-lettre-form');
+            if (form) {
+                form.reset();
+                setActiveSection('basic-info');
+            }
+            isSubmitting = false;
+            submissionId = null;
+            document.getElementById('submission-id').value = '';
+        }
+    };
+</script>

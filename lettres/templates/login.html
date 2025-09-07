@@ -1,0 +1,579 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - Système de Gestion des Courriers Administratifs</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #1d3557 0%, #457b9d 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23ffffff' fill-opacity='0.1' d='M0,128L48,117.3C96,107,192,85,288,112C384,139,480,213,576,224C672,235,768,181,864,181.3C960,181,1056,235,1152,229.3C1248,224,1344,160,1392,128L1440,96L1440,320L1392,320C1348,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
+            background-size: cover;
+            background-position: bottom;
+        }
+
+        .login-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header-section {
+            background: linear-gradient(135deg, #c1272d 0%, #e63946 100%);
+            padding: 25px;
+            text-align: center;
+            color: white;
+            position: relative;
+        }
+
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 35px;
+        }
+
+        .logo {
+            width: 140px;
+            height: 120px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 3px solid #ffd700;
+        }
+
+        .logo img {
+            width: 150%;
+            height: 140%;
+            object-fit: cover;
+            object-position: center center;
+        }
+
+        .form-section {
+            padding: 30px;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #457b9d;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px 15px 15px 45px;
+            border: 2px solid #e5e5e5;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            border-color: #457b9d;
+            box-shadow: 0 0 0 3px rgba(69, 123, 157, 0.2);
+            outline: none;
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, #1d3557 0%, #457b9d 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .btn-login:hover {
+            background: linear-gradient(135deg, #457b9d 0%, #1d3557 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(29, 53, 87, 0.3);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .language-selector {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 2;
+        }
+
+        .language-btn {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .royal-symbol {
+            display: inline-block;
+            margin-left: 5px;
+            color: #ffd700;
+        }
+
+        .login-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 15px 0;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        .forgot-password {
+            color: #3182ce;
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+            cursor: pointer;
+        }
+
+        .forgot-password:hover {
+            color: #2c5282;
+            text-decoration: underline;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background-color: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            padding: 25px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+            position: relative;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6c757d;
+            transition: color 0.2s;
+        }
+
+        .close-modal:hover {
+            color: #333;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #1d3557;
+            text-align: center;
+        }
+
+        .modal-text {
+            margin-bottom: 20px;
+            color: #4a5568;
+            text-align: center;
+        }
+
+        .modal-input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .modal-input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #457b9d;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 12px 15px 12px 45px;
+            border: 2px solid #e5e5e5;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .modal-input:focus {
+            border-color: #457b9d;
+            outline: none;
+        }
+
+        .modal-btn {
+            background: linear-gradient(135deg, #1d3557 0%, #457b9d 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .modal-btn:hover {
+            background: linear-gradient(135deg, #457b9d 0%, #1d3557 100%);
+        }
+
+        .modal-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .success-message {
+            background-color: #f0f9f0;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 4px;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .error-message {
+            background-color: #fee;
+            border-left: 4px solid #f44336;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            display: none;
+            font-size: 14px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .email-sent-animation {
+            text-align: center;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .email-icon {
+            font-size: 48px;
+            color: #457b9d;
+            margin-bottom: 15px;
+            animation: bounce 1s infinite alternate;
+        }
+
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-10px); }
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 0 15px;
+            }
+
+            .form-section {
+                padding: 20px;
+            }
+
+            .logo {
+                width: 80px;
+                height: 80px;
+            }
+            
+            .login-options {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .forgot-password {
+                align-self: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="language-selector">
+        <button class="language-btn">
+            <i class="fas fa-globe"></i> FR
+        </button>
+    </div>
+
+    <div class="login-container">
+        <div class="login-card">
+            <div class="header-section">
+                <div class="logo-container">
+                    <div class="logo">
+                       <img src="{% static 'images/morocco_royal_emblem.png' %}" alt="Emblème Royal du Maroc">
+                    </div>
+                </div>
+                <h1 class="text-2xl font-bold">Système de Gestion des Courriers</h1>
+                <p class="mt-2">Royaume du Maroc <span class="royal-symbol">&#x2655;</span></p>
+                <p class="text-sm opacity-90">Région Orientale</p>
+            </div>
+
+            <div class="form-section">
+                <form method="post" class="space-y-4">
+                    {% csrf_token %}
+
+                    {% if form.errors %}
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded text-sm">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        Nom d'utilisateur ou mot de passe incorrect.
+                    </div>
+                    {% endif %}
+
+                    <div class="input-group">
+                        <span class="input-icon">
+                            <i class="fas fa-user"></i>
+                        </span>
+                        <input type="text" id="username" name="username"
+                               class="form-input"
+                               placeholder="Nom d'utilisateur"
+                               required>
+                    </div>
+
+                    <div class="input-group">
+                        <span class="input-icon">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                        <input type="password" id="password" name="password"
+                               class="form-input"
+                               placeholder="Mot de passe"
+                               required>
+                    </div>
+
+                    <!-- Options de connexion ajoutées ici -->
+                    <div class="login-options">
+                        <label class="remember-me">
+                            <input type="checkbox" name="remember_me" class="rounded text-blue-600 focus:ring-blue-500">
+                            <span>Se souvenir de moi</span>
+                        </label>
+                        <a class="forgot-password" id="forgot-password-link">Mot de passe oublié ?</a>
+                    </div>
+
+                    <button type="submit" class="btn-login">
+                        <i class="fas fa-sign-in-alt mr-2"></i> Se connecter
+                    </button>
+                </form>
+
+                <div class="footer">
+                    <p>© 2023 Ministère de l'Intérieur - Royaume du Maroc</p>
+                    <p class="mt-1 text-xs">Système Sécurisé de Gestion des Courriers Administratifs</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour mot de passe oublié -->
+    <div class="modal" id="password-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-modal">&times;</span>
+            <h2 class="modal-title">Réinitialisation du mot de passe</h2>
+            <p class="modal-text">Veuillez saisir votre adresse email. Vous recevrez un lien pour réinitialiser votre mot de passe.</p>
+            
+            <div class="modal-input-group">
+                <span class="modal-input-icon">
+                    <i class="fas fa-envelope"></i>
+                </span>
+                <input type="email" class="modal-input" placeholder="Votre adresse email" id="reset-email">
+            </div>
+            
+            <div class="error-message" id="email-error">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                Veuillez saisir une adresse email valide.
+            </div>
+            
+            <button class="modal-btn" id="submit-reset">
+                <i class="fas fa-paper-plane mr-2"></i> Envoyer le lien de réinitialisation
+            </button>
+            
+            <div class="email-sent-animation" id="email-animation">
+                <div class="email-icon">
+                    <i class="fas fa-envelope-open-text"></i>
+                </div>
+                <p>Envoi en cours...</p>
+            </div>
+            
+            <div class="success-message" id="success-message">
+                <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                Un email de réinitialisation a été envoyé à l'adresse fournie. Veuillez vérifier votre boîte de réception.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Gestion de la modal pour mot de passe oublié
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('password-modal');
+            const forgotPasswordLink = document.getElementById('forgot-password-link');
+            const closeModal = document.getElementById('close-modal');
+            const submitReset = document.getElementById('submit-reset');
+            const successMessage = document.getElementById('success-message');
+            const emailError = document.getElementById('email-error');
+            const emailAnimation = document.getElementById('email-animation');
+            const resetEmail = document.getElementById('reset-email');
+            
+            // Ouvrir la modal
+            forgotPasswordLink.addEventListener('click', function() {
+                modal.style.display = 'flex';
+                resetEmail.focus();
+            });
+            
+            // Fermer la modal
+            closeModal.addEventListener('click', function() {
+                closeModalFunction();
+            });
+            
+            // Fermer la modal en cliquant à l'extérieur
+            window.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    closeModalFunction();
+                }
+            });
+            
+            function closeModalFunction() {
+                modal.style.display = 'none';
+                successMessage.style.display = 'none';
+                emailError.style.display = 'none';
+                emailAnimation.style.display = 'none';
+                resetEmail.value = '';
+                submitReset.disabled = false;
+            }
+            
+            // Simulation d'envoi d'email de réinitialisation
+            submitReset.addEventListener('click', function() {
+                const email = resetEmail.value;
+                
+                if (email && isValidEmail(email)) {
+                    // Désactiver le bouton pendant l'envoi
+                    submitReset.disabled = true;
+                    emailError.style.display = 'none';
+                    
+                    // Afficher l'animation d'envoi
+                    emailAnimation.style.display = 'block';
+                    
+                    // Simulation d'envoi (remplacez ceci par un appel API réel)
+                    setTimeout(function() {
+                        // Cacher l'animation
+                        emailAnimation.style.display = 'none';
+                        
+                        // Afficher le message de succès
+                        successMessage.style.display = 'block';
+                        
+                        // Réinitialiser après 4 secondes
+                        setTimeout(function() {
+                            closeModalFunction();
+                        }, 4000);
+                    }, 2000);
+                } else {
+                    // Afficher l'erreur
+                    emailError.style.display = 'block';
+                }
+            });
+            
+            // Validation d'email en temps réel
+            resetEmail.addEventListener('input', function() {
+                if (isValidEmail(this.value)) {
+                    emailError.style.display = 'none';
+                }
+            });
+            
+            // Validation basique d'email
+            function isValidEmail(email) {
+                const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return re.test(email);
+            }
+            
+            // Appuyer sur Entrée pour soumettre le formulaire de réinitialisation
+            resetEmail.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    submitReset.click();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

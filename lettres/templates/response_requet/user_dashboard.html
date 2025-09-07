@@ -1,0 +1,815 @@
+{% extends 'menu/base.html' %}
+{% load static %}
+
+{% block title %}
+Tableau de Bord - {{ destination.nom }}
+{% endblock %}
+
+{% block header_title %}
+Requêtes pour {{ destination.nom }}
+{% endblock %}
+
+{% block extra_css %}
+<style>    
+    /* Modern Design System */
+    :root {
+        --primary: #3b82f6;
+        --primary-dark: #2563eb;
+        --secondary: #64748b;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --light: #f8fafc;
+        --dark: #1e293b;
+        --gray-100: #f1f5f9;
+        --gray-200: #e2e8f0;
+        --gray-300: #cbd5e1;
+        --gray-400: #94a3b8;
+        --gray-500: #64748b;
+        --gray-600: #475569;
+        --gray-700: #334155;
+        --gray-800: #1e293b;
+        --gray-900: #0f172a;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        --radius: 0.5rem;
+        --radius-lg: 0.75rem;
+        /* --- Added for Révision demandée badge --- */
+        --revision:rgb(105, 123, 32); /* Orange for distinct visual */
+        --revision-dark:rgb(64, 170, 61);
+    }
+
+    /* Base Styles */
+    body {
+        font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+        background-color: var(--light);
+        color: var(--gray-800);
+    }
+
+    /* Card Components */
+    .card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .card:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+    }
+
+    .card-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--gray-200);
+        background: linear-gradient(to right, var(--light), var(--gray-100));
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    /* Stats Cards */
+    .stat-card {
+        display: flex;
+        align-items: center;
+        padding: 1.5rem;
+        border-radius: var(--radius-lg);
+        background: white;
+        box-shadow: var(--shadow);
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+    }
+
+    .stat-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 3.5rem;
+        height: 3.5rem;
+        border-radius: var(--radius);
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+
+    .stat-content {
+        flex: 1;
+    }
+
+    .stat-number {
+        font-size: 1.875rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--gray-500);
+        font-weight: 500;
+    }
+
+    /* Badges */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        line-height: 1;
+    }
+
+    .badge-primary { background-color: #dbeafe; color: #1d4ed8; }
+    .badge-secondary { background-color: #e2e8f0; color: #475569; }
+    .badge-success { background-color: #d1fae5; color: #065f46; }
+    .badge-warning { background-color: #fef3c7; color: #92400e; }
+    .badge-danger { background-color: #fee2e2; color: #b91c1c; }
+    .badge-info { background-color: #dbeafe; color: #1e40af; }
+    /* --- Added for Révision demandée badge --- */
+    .badge-revision { background-color: var(--revision); color: white; }
+
+    /* Buttons */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius);
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: 1px solid transparent;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-dark);
+        transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+        background-color: white;
+        color: var(--gray-700);
+        border-color: var(--gray-300);
+    }
+
+    .btn-secondary:hover {
+        background-color: var(--gray-100);
+        transform: translateY(-1px);
+    }
+
+    /* Table Styles */
+    .table-container {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th {
+        background-color: var(--light);
+        padding: 0.75rem 1.5rem;
+        text-align: left;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--gray-600);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .table td {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--gray-200);
+        font-size: 0.875rem;
+    }
+
+    .table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .table tr:hover {
+        background-color: var(--gray-100);
+    }
+
+    /* Progress Bar */
+    .progress-bar {
+        width: 100%;
+        height: 0.5rem;
+        background-color: var(--gray-200);
+        border-radius: 9999px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        border-radius: 9999px;
+        background: linear-gradient(to right, var(--primary), var(--primary-dark));
+        transition: width 0.3s ease;
+    }
+
+    /* Filter Section */
+    .filter-section {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .filter-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--gray-700);
+    }
+
+    .filter-input {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius);
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+    }
+
+    .filter-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    /* Pagination */
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.5rem;
+        background-color: var(--light);
+        border-top: 1px solid var(--gray-200);
+    }
+
+    .pagination-info {
+        font-size: 0.875rem;
+        color: var(--gray-600);
+    }
+
+    .pagination-controls {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .page-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius);
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--gray-700);
+        background: white;
+        transition: all 0.2s ease;
+        min-width: 2.5rem;
+        text-decoration: none;
+    }
+
+    .page-btn:hover {
+        background-color: var(--gray-100);
+        border-color: var(--gray-400);
+    }
+
+    .page-btn.active {
+        background-color: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    /* Empty State */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem 1rem;
+        text-align: center;
+        color: var(--gray-500);
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: var(--gray-300);
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.3s ease-out forwards;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .filter-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .table th, .table td {
+            padding: 0.75rem;
+        }
+        
+        .pagination {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: stretch;
+        }
+        
+        .pagination-controls {
+            justify-content: center;
+        }
+    }
+
+    /* Accessibility */
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        border: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="flex-1 overflow-auto p-6">
+    {% if messages %}
+        <div class="mb-6">
+            {% for message in messages %}
+                <div class="bg-{{ message.tags }}-100 border border-{{ message.tags }}-400 text-{{ message.tags }}-700 px-4 py-3 rounded-lg animate-fade-in">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Total Requests Card -->
+        <div class="stat-card" aria-labelledby="total-requests-label">
+            <div class="stat-icon bg-blue-100 text-blue-600">
+                <i class="fas fa-envelope fa-lg" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number">{{ total_responses }}</div>
+                <div class="stat-label" id="total-requests-label">Total des Requêtes</div>
+            </div>
+        </div>
+
+        <!-- Urgent Requests Card -->
+        <div class="stat-card" aria-labelledby="urgent-requests-label">
+            <div class="stat-icon bg-red-100 text-red-600">
+                <i class="fas fa-exclamation-circle fa-lg" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number">{{ responses_urgent.count }}</div>
+                <div class="stat-label" id="urgent-requests-label">Urgent</div>
+            </div>
+        </div>
+
+        <!-- Responded Requests Card -->
+        <div class="stat-card" aria-labelledby="responded-requests-label">
+            <div class="stat-icon bg-green-100 text-green-600">
+                <i class="fas fa-check-circle fa-lg" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number">{{ responses_repondues.count }}</div>
+                <div class="stat-label" id="responded-requests-label">Répondu</div>
+            </div>
+        </div>
+
+        <!-- Overdue Requests Card -->
+        <div class="stat-card" aria-labelledby="overdue-requests-label">
+            <div class="stat-icon bg-red-100 text-red-600">
+                <i class="fas fa-exclamation-triangle fa-lg" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number">{{ responses_en_retard.count }}</div>
+                <div class="stat-label" id="overdue-requests-label">En Retard</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filter-section">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="fas fa-filter text-blue-600" aria-hidden="true"></i>
+            <h2 class="text-lg font-semibold">Filtres et Recherche</h2>
+        </div>
+        <form method="get" class="filter-grid" id="filter-form">
+            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+            
+            <!-- Search Filter -->
+            <div class="filter-group">
+                <label for="search-input" class="filter-label">Recherche</label>
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+                    <input 
+                        type="text" 
+                        id="search-input" 
+                        name="search" 
+                        value="{{ search }}" 
+                        placeholder="Rechercher par sujet ou description..." 
+                        class="filter-input pl-10 pr-10 w-full" 
+                        aria-describedby="search-help"
+                        autocomplete="off"
+                    >
+                    <button 
+                        type="button" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                        onclick="document.getElementById('search-input').value = ''; document.getElementById('filter-form').submit();"
+                        aria-label="Effacer la recherche"
+                        title="Effacer la recherche"
+                    >
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                    <small id="search-help" class="sr-only">Recherchez par sujet ou description de la requête</small>
+                </div>
+            </div>
+            
+            <!-- Status Filter -->
+            <div class="filter-group">
+                <label for="statut-filter" class="filter-label">Statut</label>
+                <select 
+                    id="statut-filter" 
+                    name="statut" 
+                    class="filter-input" 
+                    aria-describedby="statut-help"
+                >
+                    <option value="">Tous les statuts</option>
+                    <option value="en_attente" {% if statut_filter == 'en_attente' %}selected{% endif %}>En attente</option>
+                    <option value="repondu" {% if statut_filter == 'repondu' %}selected{% endif %}>Répondu</option>
+                    <option value="en_retard" {% if statut_filter == 'en_retard' %}selected{% endif %}>En retard</option>
+                    <option value="revision_requested" {% if statut_filter == 'revision_requested' %}selected{% endif %}>Révision demandée</option>
+                </select>
+                <small id="statut-help" class="sr-only">Filtrez par statut de la réponse</small>
+            </div>
+            
+            <!-- Category Filter -->
+            <div class="filter-group">
+                <label for="categorie-filter" class="filter-label">Catégorie</label>
+                <select 
+                    id="categorie-filter" 
+                    name="categorie" 
+                    class="filter-input" 
+                    aria-describedby="categorie-help"
+                >
+                    <option value="">Toutes catégories</option>
+                    {% for category in categories %}
+                        <option value="{{ category }}" {% if categorie_filter == category %}selected{% endif %}>{{ category }}</option>
+                    {% endfor %}
+                </select>
+                <small id="categorie-help" class="sr-only">Filtrez par catégorie de la requête</small>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="filter-group">
+                <label class="filter-label sr-only">Actions</label>
+                <div class="flex gap-2">
+                    <button 
+                        type="submit" 
+                        class="btn btn-primary flex-1 relative" 
+                        id="apply-filter-btn"
+                        aria-label="Appliquer les filtres"
+                    >
+                        <i class="fas fa-filter mr-2" aria-hidden="true"></i>
+                        <span>Appliquer</span>
+                        <span class="loading-spinner hidden absolute inset-0 flex items-center justify-center">
+                            <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                        </span>
+                    </button>
+                    <a 
+                        href="{% url 'lettres:dashboard_Reponse' %}" 
+                        class="btn btn-secondary flex-1" 
+                        aria-label="Réinitialiser les filtres"
+                    >
+                        <i class="fas fa-sync mr-2" aria-hidden="true"></i> Réinitialiser
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Requests Table -->
+    <div class="table-container">
+        <div class="card-header">
+            <h2 class="text-lg font-semibold">Liste des Requêtes</h2>
+            <p class="text-sm text-gray-500 mt-1">{{ page_obj.paginator.count }} requête(s) trouvée(s)</p>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">Sujet</th>
+                        <th scope="col">Catégorie</th>
+                        {% if user_role in 'super_admin,admin_saisie,admin_reponse' %}
+                            <th scope="col">Service</th>
+                        {% endif %}
+                        <th scope="col">Date Réception</th>
+                        <th scope="col">Échéance</th>
+                        <th scope="col">Priorité</th>
+                        <th scope="col">Statut</th>
+                        <th scope="col"><span class="sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in page_obj %}
+                        <tr class="animate-fade-in">
+                            <td>
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                                        <i class="fas fa-envelope text-blue-600" aria-hidden="true"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium text-gray-900 max-w-xs truncate" title="{{ item.lettre.subject }}">
+                                            {{ item.lettre.subject }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge badge-info">{{ item.lettre.category }}</span>
+                            </td>
+                            {% if user_role in 'super_admin,admin_saisie,admin_reponse' %}
+                                <td>
+                                    <span class="badge badge-secondary">{{ item.lettre.service|default:"N/A" }}</span>
+                                </td>
+                            {% endif %}
+                            <td>
+                                <div class="text-sm text-gray-600">
+                                    {{ item.lettre.date|date:"d/m/Y" }}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-sm font-medium text-gray-700">
+                                        {{ item.lettre.deadline|date:"d/m/Y" }}
+                                    </span>
+                                    {% if item.response.statut != 'repondu' %}
+                                        {% if item.lettre.is_overdue %}
+                                            <span class="badge badge-danger text-xs">
+                                                <i class="fas fa-exclamation-circle mr-1" aria-hidden="true"></i>
+                                                {{ item.lettre.days_overdue }}j retard
+                                            </span>
+                                        {% elif item.lettre.days_until_deadline <= 2 %}
+                                            <span class="badge badge-warning text-xs">
+                                                <i class="fas fa-clock mr-1" aria-hidden="true"></i>
+                                                {{ item.lettre.days_until_deadline }}j restant
+                                            </span>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge 
+                                    {% if item.lettre.priority == 'high' %}badge-danger
+                                    {% elif item.lettre.priority == 'medium' %}badge-warning
+                                    {% else %}badge-success{% endif %}">
+                                    {% if item.lettre.priority == 'high' %}
+                                        <i class="fas fa-exclamation-circle mr-1" aria-hidden="true"></i>
+                                    {% elif item.lettre.priority == 'medium' %}
+                                        <i class="fas fa-info-circle mr-1" aria-hidden="true"></i>
+                                    {% else %}
+                                        <i class="fas fa-check-circle mr-1" aria-hidden="true"></i>
+                                    {% endif %}
+                                    {{ item.lettre.get_priority_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge 
+                                    {% if item.display_status == 'En attente' %}badge-warning
+                                    {% elif item.display_status == 'Révision demandée' %}badge-revision
+                                    {% elif item.display_status == 'Soumise' %}badge-primary
+                                    {% elif item.display_status == 'Acceptée' %}badge-success
+                                    {% else %}badge-danger{% endif %}">
+                                    {% if item.display_status == 'En attente' %}
+                                        <i class="fas fa-clock mr-1" aria-hidden="true"></i>
+                                    {% elif item.display_status == 'Révision demandée' %}
+                                        <i class="fas fa-exclamation-triangle mr-1" aria-hidden="true"></i>
+                                    {% elif item.display_status == 'Soumise' %}
+                                        <i class="fas fa-hourglass-half mr-1" aria-hidden="true"></i>
+                                    {% elif item.display_status == 'Acceptée' %}
+                                        <i class="fas fa-check-circle mr-1" aria-hidden="true"></i>
+                                    {% else %}
+                                        <i class="fas fa-exclamation-triangle mr-1" aria-hidden="true"></i>
+                                    {% endif %}
+                                    {{ item.display_status }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="flex items-center gap-2">
+                                    <a href="{% url 'lettres:response_detail' item.response.id %}" 
+                                       class="text-blue-600 hover:text-blue-800 transition-colors duration-200 p-2 rounded-lg hover:bg-blue-50" 
+                                       title="Voir détails" aria-label="Voir les détails de la requête">
+                                        <i class="fas fa-eye" aria-hidden="true"></i>
+                                    </a>
+                                    <a href="{% url 'lettres:submit_response' item.lettre.id %}" 
+                                       class="text-indigo-600 hover:text-indigo-800 transition-colors duration-200 p-2 rounded-lg hover:bg-indigo-50" 
+                                       title="{% if item.response.statut == 'repondu' and item.response.approval_status == 'revision_requested' %}Resoumettre la réponse{% elif item.response.statut == 'repondu' %}Modifier la réponse{% else %}Remplir réponse{% endif %}" 
+                                       aria-label="{% if item.response.statut == 'repondu' and item.response.approval_status == 'revision_requested' %}Resoumettre la réponse{% elif item.response.statut == 'repondu' %}Modifier la réponse{% else %}Remplir réponse{% endif %}">
+                                        <i class="fas {% if item.response.statut == 'repondu' and item.response.approval_status == 'revision_requested' %}fa-reply{% elif item.response.statut == 'repondu' %}fa-edit{% else %}fa-reply{% endif %}" aria-hidden="true"></i>
+                                    </a>
+                                    {% if item.response.statut == 'repondu' and item.response.response_file %}
+                                        <a href="{{ item.response.response_file.url }}" 
+                                           class="text-green-600 hover:text-green-800 transition-colors duration-200 p-2 rounded-lg hover:bg-green-50" 
+                                           target="_blank" 
+                                           title="Télécharger la réponse" 
+                                           aria-label="Télécharger la réponse">
+                                            <i class="fas fa-download" aria-hidden="true"></i>
+                                        </a>
+                                    {% endif %}
+                                    {% if item.lettre.response_template %}
+                                        <a href="{{ item.lettre.response_template.url }}" 
+                                           class="text-gray-600 hover:text-gray-800 transition-colors duration-200 p-2 rounded-lg hover:bg-gray-100" 
+                                           target="_blank" 
+                                           title="Télécharger le template" 
+                                           aria-label="Télécharger le modèle de réponse">
+                                            <i class="fas fa-file-download" aria-hidden="true"></i>
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="{% if user_role in 'super_admin,admin_saisie,admin_reponse' %}8{% else %}7{% endif %}">
+                                <div class="empty-state">
+                                    <div class="empty-state-icon">
+                                        <i class="far fa-folder-open" aria-hidden="true"></i>
+                                    </div>
+                                    <h3 class="text-lg font-medium text-gray-600 mb-2">Aucune requête trouvée</h3>
+                                    <p class="text-gray-500">Aucune requête ne correspond à vos critères de recherche.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <!-- Results Info -->
+                <div class="text-sm text-gray-700 font-roboto">
+                    Affichage de <span class="font-medium">{{ page_obj.start_index }}</span> à <span class="font-medium">{{ page_obj.end_index }}</span> sur <span class="font-medium">{{ page_obj.paginator.count }}</span> résultats
+                </div>
+        
+                <!-- Pagination Controls -->
+                <nav aria-label="Pagination" class="flex items-center space-x-2">
+                    <!-- First Page Button -->
+                    {% if page_obj.number > 1 %}
+                        <a href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                           class="px-3 py-2 border border-gray-300 rounded-full text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 hover:border-moroccan-red transition-all duration-200 flex items-center"
+                           aria-label="Première page">
+                            <i class="fas fa-angle-double-left mr-2"></i> Première
+                        </a>
+                    {% else %}
+                        <span class="px-3 py-2 border border-gray-200 rounded-full text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed flex items-center" aria-disabled="true">
+                            <i class="fas fa-angle-double-left mr-2"></i> Première
+                        </span>
+                    {% endif %}
+        
+                    <!-- Previous Button -->
+                    {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                           class="px-3 py-2 border border-gray-300 rounded-full text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 hover:border-moroccan-red transition-all duration-200 flex items-center"
+                           aria-label="Page précédente">
+                            <i class="fas fa-chevron-left mr-2"></i> Précédent
+                        </a>
+                    {% else %}
+                        <span class="px-3 py-2 border border-gray-200 rounded-full text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed flex items-center" aria-disabled="true">
+                            <i class="fas fa-chevron-left mr-2"></i> Précédent
+                        </span>
+                    {% endif %}
+        
+                    <!-- Page Numbers -->
+                    <div class="flex space-x-1">
+                        {% if page_obj.paginator.num_pages > 5 and page_obj.number > 3 %}
+                            <span class="px-3 py-2 text-sm font-medium text-gray-500">...</span>
+                        {% endif %}
+        
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
+                                {% if page_obj.number == num %}
+                                    <span class="px-3 py-2 border border-moroccan-red rounded-full text-sm font-medium text-white bg-moroccan-red" aria-current="page">
+                                        {{ num }}
+                                    </span>
+                                {% else %}
+                                    <a href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                                       class="px-3 py-2 border border-gray-300 rounded-full text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 hover:border-moroccan-red transition-all duration-200">
+                                        {{ num }}
+                                    </a>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+        
+                        {% if page_obj.paginator.num_pages > 5 and page_obj.number < page_obj.paginator.num_pages|add:'-2' %}
+                            <span class="px-3 py-2 text-sm font-medium text-gray-500">...</span>
+                        {% endif %}
+                    </div>
+        
+                    <!-- Next Button -->
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                           class="px-3 py-2 border border-gray-300 rounded-full text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 hover:border-moroccan-red transition-all duration-200 flex items-center"
+                           aria-label="Page suivante">
+                            Suivant <i class="fas fa-chevron-right ml-2"></i>
+                        </a>
+                    {% else %}
+                        <span class="px-3 py-2 border border-gray-200 rounded-full text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed flex items-center" aria-disabled="true">
+                            Suivant <i class="fas fa-chevron-right ml-2"></i>
+                        </span>
+                    {% endif %}
+        
+                    <!-- Last Page Button -->
+                    {% if page_obj.number < page_obj.paginator.num_pages %}
+                        <a href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                           class="px-3 py-2 border border-gray-300 rounded-full text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 hover:border-moroccan-red transition-all duration-200 flex items-center"
+                           aria-label="Dernière page">
+                            Dernière <i class="fas fa-angle-double-right ml-2"></i>
+                        </a>
+                    {% else %}
+                        <span class="px-3 py-2 border border-gray-200 rounded-full text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed flex items-center" aria-disabled="true">
+                            Dernière <i class="fas fa-angle-double-right ml-2"></i>
+                        </span>
+                    {% endif %}
+                </nav>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Page load animations
+    document.addEventListener('DOMContentLoaded', () => {
+        const cards = document.querySelectorAll('.stat-card, .card, .filter-section');
+        cards.forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.1}s`;
+            card.classList.add('animate-fade-in');
+        });
+    });
+
+    // Filter input feedback
+    document.addEventListener('DOMContentLoaded', () => {
+        const filterInputs = document.querySelectorAll('.filter-input');
+        filterInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                this.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.2)';
+                setTimeout(() => {
+                    this.style.boxShadow = '';
+                }, 500);
+            });
+        });
+    });
+</script>
+{% endblock %}
