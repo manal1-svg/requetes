@@ -405,8 +405,6 @@ def new_lettres(request):
 
 
 
-
-
 @login_required
 def lettre_detail(request, pk):
     try:
@@ -523,8 +521,6 @@ def lettre_detail(request, pk):
     except Exception as e:
         logger.error("Error constructing response data for lettre %s: %s", pk, str(e))
         return JsonResponse({'success': False, 'message': 'Erreur interne lors de la construction des données.'}, status=500)
-
-
 
 
 
