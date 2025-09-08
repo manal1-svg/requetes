@@ -669,32 +669,44 @@ Tableau de Bord
                     <div class="mb-6">
                         <h5 class="text-lg font-semibold text-indigo-800 mb-4">Informations Générales</h5>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-blue-50 p-4 rounded-lg border border-indigo-100 shadow-sm">
+                            <!-- Créée par at the top -->
+                            <div class="space-y-1">
+                                <p class="text-indigo-600 text-xs font-medium uppercase tracking-wide">Créée par</p>
+                                <p class="font-medium text-indigo-900 text-sm" id="detail-created-by">N/A</p>
+                            </div>
+                            
                             <div class="space-y-1">
                                 <p class="text-indigo-600 text-xs font-medium uppercase tracking-wide">Sujet</p>
                                 <p class="font-medium text-indigo-900 text-sm truncate" title="Sujet de la requête" id="detail-subject">N/A</p>
                             </div>
+                            
                             <div class="space-y-1">
                                 <p class="text-indigo-600 text-xs font-medium uppercase tracking-wide">Catégorie</p>
                                 <span class="badge bg-indigo-200 text-indigo-800 px-2.5 py-0.5 rounded-full text-xs font-medium hover:bg-indigo-300 transition-colors duration-200" id="detail-category">N/A</span>
                             </div>
+                            
                             {% if user_role in 'super_admin,admin_saisie,admin_reponse' %}
                             <div class="space-y-1">
                                 <p class="text-indigo-600 text-xs font-medium uppercase tracking-wide">Service</p>
                                 <span class="badge bg-cyan-200 text-cyan-800 px-2.5 py-0.5 rounded-full text-xs font-medium hover:bg-cyan-300 transition-colors duration-200" id="detail-service-info">N/A</span>
                             </div>
                             {% endif %}
+                            
                             <div class="space-y-1">
                                 <p class="text-indigo-600 text-xs font-medium uppercase tracking-wide">Priorité</p>
                                 <span class="badge px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors duration-200" id="detail-priority">N/A</span>
                             </div>
+                            
                             <div class="space-y-1">
                                 <p class="text-indigo-600 text-xs font-medium uppercase tracking-wide">Date de Réception</p>
                                 <p class="font-medium text-indigo-900 text-sm" id="detail-date">N/A</p>
                             </div>
+                            
                             <div class="space-y-1">
                                 <p class="text-indigo-600 text-xs font-medium uppercase tracking-wide">Échéance</p>
                                 <p class="font-medium text-indigo-900 text-sm" id="detail-deadline-display">N/A</p>
                             </div>
+                            
                             <div class="space-y-1">
                                 <p class="text-indigo-600 text-xs font-medium uppercase tracking-wide">Rappels Envoyés</p>
                                 <p class="font-medium text-indigo-900 text-sm" id="detail-rappels-envoyes">0</p>
@@ -711,6 +723,7 @@ Tableau de Bord
                             </div>
                         </div>
                     </div>
+                </div>
                     <div class="mb-6">
                         <div class="flex items-center justify-between mb-2">
                             <h5 class="text-lg font-semibold text-indigo-800">
@@ -849,6 +862,7 @@ Tableau de Bord
             document.getElementById('detail-category').textContent = data.category || 'N/A';
             document.getElementById('detail-date').textContent = data.date || 'N/A';
             document.getElementById('detail-rappels-envoyes').textContent = data.rappels_envoyes || '0';
+            document.getElementById('detail-created-by').textContent = data.created_by; // Display creator
 
             let deadlineContent = data.deadline || 'N/A';
             if (data.days_overdue > 0) {
