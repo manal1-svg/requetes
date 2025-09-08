@@ -475,7 +475,6 @@ def lettre_detail(request, pk):
                 'rappels': list(rappels),
                 'email': destination.email or '',
                 'response_file': response_file_url,
-                # Add approval-related fields
                 'response_id': response.id,
                 'approval_status': response.approval_status if hasattr(response, 'approval_status') else 'pending',
                 'revision_comments': response.revision_comments if hasattr(response, 'revision_comments') else None,
@@ -512,6 +511,7 @@ def lettre_detail(request, pk):
         'rappels_envoyes': total_rappels_envoyes,
         'response_template': lettre.response_template.url if lettre.response_template else None,
         'image': image_url,
+        'created_by': lettre.created_by.username if lettre.created_by else 'Unknown',  # Added created_by field
     }
 
     # Include service only for super_admin, admin_saisie, admin_reponse
@@ -523,8 +523,6 @@ def lettre_detail(request, pk):
     except Exception as e:
         logger.error("Error constructing response data for lettre %s: %s", pk, str(e))
         return JsonResponse({'success': False, 'message': 'Erreur interne lors de la construction des données.'}, status=500)
-
-
 
 
 
