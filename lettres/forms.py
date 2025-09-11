@@ -141,10 +141,10 @@ class LettreForm(forms.ModelForm):
             raise ValidationError("Veuillez sélectionner au moins une destination ou cocher 'Envoyé à toutes les destinations'.")
 
         if service == 'MARITIME' and not sent_to_all_destinations:
-            valid_destinations = Destination.objects.filter(nom__in=['Nador', 'Driouch'])
+            valid_destinations = Destination.objects.filter(nom__in=['Nador', 'Driouch', 'Berkane'])
             if not all(destination in valid_destinations for destination in destinations):
                 logger.error("Validation failed: MARITIME service selected with invalid destinations")
-                raise ValidationError("Le service MARITIME est uniquement disponible pour Nador ou Driouch.")
+                raise ValidationError("Le service MARITIME est uniquement disponible pour Nador, Driouch, ou Berkane.")
 
         if user_profile and user_profile.role in ['saisie_ec', 'saisie_er']:
             if service != user_profile.service:
@@ -157,7 +157,6 @@ class LettreForm(forms.ModelForm):
             raise ValidationError("Veuillez sélectionner un service.")
 
         return cleaned_data
-        
 class DestinationForm(forms.ModelForm):
     class Meta:
         model = Destination
