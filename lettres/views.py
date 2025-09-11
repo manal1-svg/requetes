@@ -38,7 +38,7 @@ from .models import Lettre, Destination, Response, Rappel
 from datetime import datetime
 from django.views.decorators.csrf import csrf_exempt
 
-from celery import shared_task
+from celery import shared_task  # pyright: ignore[reportMissingImports]
 
 logger = logging.getLogger(__name__)
 
@@ -397,7 +397,6 @@ def new_lettres(request):
         'user_role': profile.role,
         'user_profile': profile
     })
-
 
 
 
