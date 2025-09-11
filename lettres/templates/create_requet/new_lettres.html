@@ -63,8 +63,8 @@
                 <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
                     <div class="space-y-4">
                         <div class="space-y-2">
-                            {% if user_role == 'saisie_ec' or user_role == 'admin_saisie' %}
-                            <!-- Predefined destination for saisie_ec or admin_saisie users -->
+                            {% if user_role == 'saisie_ec' or user_role == 'admin_saisie' or user_role == 'directeur_regional' %}
+                            <!-- Predefined destination for restricted users -->
                             <label class="block text-sm font-medium text-gray-700">Destination concernée <span class="text-red-500">*</span></label>
                             <div class="flex items-center">
                                 <input type="checkbox" 
@@ -76,10 +76,11 @@
                                 <label for="id_destinations_{{ user_profile.destination.id|default:'unknown' }}" class="ml-2 text-sm font-semibold text-gray-900">
                                     {{ request.user.userprofile.destination.nom|default:"N/A" }}
                                 </label>
-                                <!-- Hidden input to ensure submission -->
+                                <!-- Hidden input for form submission -->
                                 <input type="hidden" 
                                        name="destinations" 
-                                       value="{{ user_profile.destination.id|default:'' }}">
+                                       value="{{ user_profile.destination.id|default:'' }}"
+                                       data-destination-name="{{ request.user.userprofile.destination.nom|default:'N/A'|escapejs }}">
                             </div>
                             {% else %}
                             <!-- Interactive destinations for non-restricted users -->
@@ -106,34 +107,35 @@
                 </div>
 
                 <!-- Services Card -->
-<div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
-    <div class="space-y-2">
-        <label class="block text-sm font-medium text-gray-700">Service concerné <span class="text-red-500">*</span></label>
-        {% if user_role == 'saisie_ec' %}
-            <!-- Display service name for saisie_ec users -->
-            <div class="flex items-center">
-                <span class="text-sm font-semibold text-gray-900">{{ request.user.userprofile.get_service_display|default:"N/A" }}</span>
-                <!-- Hidden input to ensure submission -->
-                <input type="hidden" name="service" value="{{ user_profile.service|default:'SGP' }}">
-            </div>
-        {% else %}
-            <!-- Interactive services for non-saisie_ec users (including admin_saisie) -->
-            <div id="services-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
-                {% for radio in form.service %}
-                <div class="flex items-center">
-                    {{ radio.tag }}
-                    <label for="{{ radio.id_for_label }}" class="ml-2 text-sm text-gray-700">
-                        {{ radio.choice_label }}
-                    </label>
+                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Service concerné <span class="text-red-500">*</span></label>
+                        {% if user_role == 'saisie_ec' %}
+                            <!-- Display service name for saisie_ec users -->
+                            <div class="flex items-center">
+                                <span class="text-sm font-semibold text-gray-900">{{ request.user.userprofile.get_service_display|default:"N/A" }}</span>
+                                <!-- Hidden input to ensure submission -->
+                                <input type="hidden" name="service" value="{{ user_profile.service|default:'SGP' }}">
+                            </div>
+                        {% else %}
+                            <!-- Interactive services for non-saisie_ec users -->
+                            <div id="services-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
+                                {% for radio in form.service %}
+                                <div class="flex items-center">
+                                    {{ radio.tag }}
+                                    <label for="{{ radio.id_for_label }}" class="ml-2 text-sm text-gray-700">
+                                        {{ radio.choice_label }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <p id="maritime-warning" class="text-xs text-red-500 mt-2 italic hidden">
+                                Le service <strong>MARITIME</strong> est disponible uniquement pour <strong>Nador</strong>, <strong>Driouch</strong>, ou <strong>Berkane</strong>.
+                            </p>
+                        {% endif %}
+                    </div>
                 </div>
-                {% endfor %}
-            </div>
-            <p id="maritime-warning" class="text-xs text-red-500 mt-2 italic hidden">
-                Le service <strong>MARITIME</strong> est disponible uniquement pour <strong>Nador</strong> ou <strong>Driouch</strong>.
-            </p>
-        {% endif %}
-    </div>
-</div>
+
                 <!-- Format Card -->
                 <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm">
                     <div class="space-y-2">
@@ -357,50 +359,26 @@
     // Generate UUID for submission tracking
     function generateUUID() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
             return v.toString(16);
         });
     }
 
-    // Initialize form
-    setActiveSection('basic-info');
+    // Define user role and destination as JS variables
+    var userRole = "{{ user_role|escapejs }}";
+    var isRestrictedRole = (userRole === 'saisie_ec' || userRole === 'admin_saisie' || userRole === 'directeur_regional');
+    var userDestination = "{{ request.user.userprofile.destination.nom|default:'N/A'|escapejs }}";
 
-    // Update file display
-    function updateFileDisplay(inputId, displayId) {
-        const input = document.getElementById(inputId);
-        const display = document.getElementById(displayId);
-        if (input.files && input.files[0]) {
-            display.querySelector('span').textContent = input.files[0].name;
-            display.classList.remove('hidden');
-        }
-    }
-
-    // Clear file input
-    function clearFile(inputId, displayId) {
-        const input = document.getElementById(inputId);
-        const display = document.getElementById(displayId);
-        input.value = '';
-        display.classList.add('hidden');
-    }
-
-    // Toggle all destinations
-    function toggleAllDestinations() {
-        const allCheckbox = document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}');
-        const destinationCheckboxes = document.querySelectorAll('#destinations-container input[type="checkbox"]');
-        destinationCheckboxes.forEach(checkbox => {
-            checkbox.checked = allCheckbox.checked;
-        });
-        updateServiceAvailability();
-    }
-
-    // Section navigation
+    // Section navigation functions
     function setActiveSection(sectionId) {
-        document.querySelectorAll('.form-section').forEach(section => {
-            section.style.display = section.id === sectionId ? 'block' : 'none';
+        var sections = document.querySelectorAll('.form-section');
+        sections.forEach(function(section) {
+            section.style.display = (section.id === sectionId) ? 'block' : 'none';
         });
         
-        document.querySelectorAll('.section-button').forEach(button => {
-            const isActive = button.dataset.section === sectionId;
+        var buttons = document.querySelectorAll('.section-button');
+        buttons.forEach(function(button) {
+            var isActive = (button.dataset.section === sectionId);
             button.classList.toggle('bg-blue-100', isActive);
             button.classList.toggle('text-blue-700', isActive);
             button.classList.toggle('border-b-2', isActive);
@@ -409,270 +387,347 @@
             button.classList.toggle('hover:bg-gray-100', !isActive);
         });
 
-        const prevButton = document.getElementById('prev-button');
-        const nextButton = document.getElementById('next-button');
-        const submitButtons = document.getElementById('submit-buttons');
+        var prevButton = document.getElementById('prev-button');
+        var nextButton = document.getElementById('next-button');
+        var submitButtons = document.getElementById('submit-buttons');
         
         if (sectionId === 'basic-info') {
-            prevButton.style.display = 'none';
-            nextButton.style.display = 'inline-flex';
-            submitButtons.style.display = 'none';
+            if (prevButton) prevButton.style.display = 'none';
+            if (nextButton) nextButton.style.display = 'inline-flex';
+            if (submitButtons) submitButtons.style.display = 'none';
         } else if (sectionId === 'details') {
-            prevButton.style.display = 'inline-flex';
-            nextButton.style.display = 'inline-flex';
-            submitButtons.style.display = 'none';
+            if (prevButton) prevButton.style.display = 'inline-flex';
+            if (nextButton) nextButton.style.display = 'inline-flex';
+            if (submitButtons) submitButtons.style.display = 'none';
         } else if (sectionId === 'attachments') {
-            prevButton.style.display = 'inline-flex';
-            nextButton.style.display = 'none';
-            submitButtons.style.display = 'flex';
+            if (prevButton) prevButton.style.display = 'inline-flex';
+            if (nextButton) nextButton.style.display = 'none';
+            if (submitButtons) submitButtons.style.display = 'flex';
         }
     }
 
-    // Navigate between sections
     function navigateSection(direction) {
-        const sections = ['basic-info', 'details', 'attachments'];
-        const currentSection = Array.from(document.querySelectorAll('.form-section')).find(section => section.style.display === 'block').id;
-        const currentIndex = sections.indexOf(currentSection);
-        let nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+        var sections = ['basic-info', 'details', 'attachments'];
+        var currentSection = Array.from(document.querySelectorAll('.form-section')).find(function(section) { return section.style.display === 'block'; });
+        if (!currentSection) return;
+        var currentIndex = sections.indexOf(currentSection.id);
+        var nextIndex = (direction === 'next') ? currentIndex + 1 : currentIndex - 1;
 
         if (nextIndex >= 0 && nextIndex < sections.length) {
             setActiveSection(sections[nextIndex]);
         }
     }
 
+    // Initialize form sections
+    function initForm() {
+        setActiveSection('basic-info');
+    }
+
+    // Update file display
+    function updateFileDisplay(inputId, displayId) {
+        var input = document.getElementById(inputId);
+        var display = document.getElementById(displayId);
+        if (input && input.files && input.files[0]) {
+            var span = display.querySelector('span');
+            if (span) span.textContent = input.files[0].name;
+            display.classList.remove('hidden');
+        }
+    }
+
+    // Clear file input
+    function clearFile(inputId, displayId) {
+        var input = document.getElementById(inputId);
+        var display = document.getElementById(displayId);
+        if (input) input.value = '';
+        if (display) display.classList.add('hidden');
+    }
+
+    // Toggle all destinations
+    function toggleAllDestinations() {
+        var allCheckboxId = '{{ form.sent_to_all_destinations.id_for_label|escapejs }}';
+        var allCheckbox = document.getElementById(allCheckboxId);
+        var destinationCheckboxes = document.querySelectorAll('#destinations-container input[type="checkbox"]');
+        destinationCheckboxes.forEach(function(checkbox) {
+            checkbox.checked = allCheckbox.checked;
+        });
+        updateServiceAvailability();
+    }
+
     // Toggle priority dropdown
     function togglePriorityDropdown() {
-        const dropdown = document.getElementById('priority-dropdown');
-        const chevron = document.getElementById('priority-chevron');
-        dropdown.classList.toggle('hidden');
-        chevron.classList.toggle('rotate-180');
+        var dropdown = document.getElementById('priority-dropdown');
+        var chevron = document.getElementById('priority-chevron');
+        if (dropdown) dropdown.classList.toggle('hidden');
+        if (chevron) chevron.classList.toggle('rotate-180');
     }
 
     // Select priority with colored indicators
     function selectPriority(value, label) {
-        const priorityField = document.getElementById('{{ form.priority.id_for_label }}');
-        const priorityIndicator = document.getElementById('priority-indicator');
-        const priorityLabel = document.getElementById('priority-label');
+        var priorityFieldId = '{{ form.priority.id_for_label|escapejs }}';
+        var priorityField = document.getElementById(priorityFieldId);
+        var priorityIndicator = document.getElementById('priority-indicator');
+        var priorityLabel = document.getElementById('priority-label');
         
-        priorityField.value = value;
-        priorityLabel.textContent = label;
+        if (priorityField) priorityField.value = value;
+        if (priorityLabel) priorityLabel.textContent = label;
         
-        switch(value) {
-            case 'low':
-                priorityIndicator.className = 'w-3 h-3 rounded-full bg-green-500';
-                break;
-            case 'medium':
-                priorityIndicator.className = 'w-3 h-3 rounded-full bg-yellow-500';
-                break;
-            case 'high':
-                priorityIndicator.className = 'w-3 h-3 rounded-full bg-red-500';
-                break;
+        if (priorityIndicator) {
+            var className = 'w-3 h-3 rounded-full ';
+            if (value === 'low') className += 'bg-green-500';
+            else if (value === 'medium') className += 'bg-yellow-500';
+            else if (value === 'high') className += 'bg-red-500';
+            priorityIndicator.className = className;
         }
         
-        document.getElementById('priority-dropdown').classList.add('hidden');
-        document.getElementById('priority-chevron').classList.remove('rotate-180');
+        var dropdown = document.getElementById('priority-dropdown');
+        var chevron = document.getElementById('priority-chevron');
+        if (dropdown) dropdown.classList.add('hidden');
+        if (chevron) chevron.classList.remove('rotate-180');
     }
 
     // Service availability based on destinations
     function updateServiceAvailability() {
-        const allDestinationsChecked = document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}')?.checked;
-        const selectedDestinations = Array.from(document.querySelectorAll('#destinations-container input[type="checkbox"]:checked')).map(cb => cb.nextElementSibling.textContent.trim());
-        const maritimeService = document.querySelector('#services-container input[value="MARITIME"]');
-        const onlyNadorOrDriouch = selectedDestinations.every(dest => ['Nador', 'Driouch'].includes(dest));
-        const maritimeWarning = document.getElementById('maritime-warning');
+        var allDestinationsChecked = false;
+        var allCheckboxId = '{{ form.sent_to_all_destinations.id_for_label|escapejs }}';
+        var allCheckbox = document.getElementById(allCheckboxId);
+        if (allCheckbox) allDestinationsChecked = allCheckbox.checked;
+        
+        var selectedDestinations = [];
+        // For restricted roles, check hidden destination input
+        if (isRestrictedRole) {
+            var hiddenDestinationInput = document.querySelector('input[name="destinations"][type="hidden"]');
+            if (hiddenDestinationInput && hiddenDestinationInput.dataset.destinationName) {
+                selectedDestinations = [hiddenDestinationInput.dataset.destinationName];
+            }
+        } else {
+            // For non-restricted roles, check selected checkboxes
+            selectedDestinations = Array.from(document.querySelectorAll('#destinations-container input[type="checkbox"]:checked')).map(function(cb) { 
+                return cb.nextElementSibling ? cb.nextElementSibling.textContent.trim() : ''; 
+            });
+        }
+        
+        console.log('Selected destinations:', selectedDestinations); // Debug log
+        
+        var maritimeService = document.querySelector('#services-container input[value="MARITIME"]');
+        var onlyNadorDriouchBerkane = selectedDestinations.length > 0 && selectedDestinations.every(function(dest) { 
+            return ['Nador', 'Driouch', 'Berkane'].includes(dest); 
+        });
+        var maritimeWarning = document.getElementById('maritime-warning');
 
-        {% if user_role != 'saisie_ec' %}
-        if (allDestinationsChecked || selectedDestinations.length === 0 || !onlyNadorOrDriouch) {
+        // Enable MARITIME for valid destinations (Nador, Driouch, Berkane)
+        if (isRestrictedRole && ['Nador', 'Driouch', 'Berkane'].includes(userDestination)) {
+            console.log('Enabling MARITIME for predefined destination:', userDestination);
+            if (maritimeService) {
+                maritimeService.disabled = false;
+                // Optionally set MARITIME as default
+                maritimeService.checked = true;
+            }
+            if (maritimeWarning) maritimeWarning.classList.add('hidden');
+        } else if (!isRestrictedRole && (allDestinationsChecked || selectedDestinations.length === 0 || !onlyNadorDriouchBerkane)) {
+            console.log('Disabling MARITIME: invalid destinations or all selected');
             if (maritimeService) {
                 maritimeService.disabled = true;
                 if (maritimeService.checked) {
                     maritimeService.checked = false;
-                    const firstAvailableService = document.querySelector('#services-container input[type="radio"]:not([value="MARITIME"])');
-                    if (firstAvailableService) {
-                        firstAvailableService.checked = true;
-                    }
+                    var firstAvailableService = document.querySelector('#services-container input[type="radio"]:not([value="MARITIME"])');
+                    if (firstAvailableService) firstAvailableService.checked = true;
                 }
             }
-            maritimeWarning?.classList.remove('hidden');
+            if (maritimeWarning) maritimeWarning.classList.remove('hidden');
         } else {
-            if (maritimeService) {
-                maritimeService.disabled = false;
-            }
-            maritimeWarning?.classList.add('hidden');
+            console.log('Enabling MARITIME for selected destinations:', selectedDestinations);
+            if (maritimeService) maritimeService.disabled = false;
+            if (maritimeWarning) maritimeWarning.classList.add('hidden');
         }
-        {% endif %}
     }
 
     // Form submission validation and handling
-    let isSubmitting = false;
-    let submissionId = null;
+    var isSubmitting = false;
+    var submissionId = null;
 
     function handleSubmit(event) {
-    event.preventDefault();
-    
-    if (isSubmitting) {
-        console.log('Submission already in progress');
-        return false;
-    }
-
-    const form = document.getElementById('new-lettre-form');
-    const submitButton = document.getElementById('submit-button');
-    const submitText = submitButton.querySelector('.submit-text');
-    const loadingSpinner = submitButton.querySelector('.loading-spinner');
-    const submissionIdField = document.getElementById('submission-id');
-
-    submissionId = generateUUID();
-    submissionIdField.value = submissionId;
-
-    // Client-side validation
-    const subject = document.getElementById('{{ form.subject.id_for_label }}').value;
-    const category = document.getElementById('{{ form.category.id_for_label }}').value;
-    const date = document.getElementById('{{ form.date.id_for_label }}').value;
-    const deadline = document.getElementById('{{ form.deadline.id_for_label }}').value;
-    const selectedDestinations = Array.from(document.querySelectorAll('#destinations-container input[type="checkbox"]:checked'));
-    const selectedService = document.querySelector('#services-container input[type="radio"]:checked') || document.querySelector('input[name="service"]');
-    const selectedFormat = document.querySelector('#format-container input[type="radio"]:checked');
-
-    console.log('Selected service:', selectedService ? selectedService.value : 'None');
-
-    if (!subject) {
-        alert('Veuillez entrer un sujet.');
-        submissionIdField.value = '';
-        return false;
-    }
-    if (!category) {
-        alert('Veuillez sélectionner une catégorie.');
-        submissionIdField.value = '';
-        return false;
-    }
-    if (!date) {
-        alert('Veuillez entrer une date de réception.');
-        submissionIdField.value = '';
-        return false;
-    }
-    if (!deadline) {
-        alert('Veuillez entrer une date limite de réponse.');
-        submissionIdField.value = '';
-        return false;
-    }
-    {% if user_role != 'saisie_ec' and user_role != 'admin_saisie' %}
-    if (selectedDestinations.length === 0 && !document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}')?.checked) {
-        alert('Veuillez sélectionner au moins une destination ou cocher "Tout sélectionner".');
-        submissionIdField.value = '';
-        return false;
-    }
-    {% endif %}
-    if (!selectedService) {
-        alert('Veuillez sélectionner un service.');
-        submissionIdField.value = '';
-        return false;
-    }
-    if (!selectedFormat) {
-        alert('Veuillez sélectionner un format de la requête.');
-        submissionIdField.value = '';
-        return false;
-    }
-
-    isSubmitting = true;
-    submitButton.disabled = true;
-    submitText.classList.add('hidden');
-    loadingSpinner.classList.remove('hidden');
-    form.classList.add('opacity-50', 'pointer-events-none');
-
-    const formData = new FormData(form);
-    console.log('Form data service:', formData.get('service')); // Debug log
-
-    fetch("{% url 'lettres:new_lettres' %}", {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-Submission-ID': submissionId
+        event.preventDefault();
+        
+        if (isSubmitting) {
+            console.log('Submission already in progress');
+            return false;
         }
-    })
-    .then(async response => {
-        console.log('Response Status:', response.status, 'Submission ID:', submissionId);
-        const contentType = response.headers.get('content-type');
-        let data;
-        if (contentType && contentType.includes('application/json')) {
-            data = await response.json();
-        } else {
-            data = await response.text();
-            console.log('Unexpected Response:', data.substring(0, 100));
-            throw new Error('Une erreur inattendue s’est produite sur le serveur.');
+
+        var form = document.getElementById('new-lettre-form');
+        var submitButton = document.getElementById('submit-button');
+        var submitText = submitButton ? submitButton.querySelector('.submit-text') : null;
+        var loadingSpinner = submitButton ? submitButton.querySelector('.loading-spinner') : null;
+        var submissionIdField = document.getElementById('submission-id');
+
+        submissionId = generateUUID();
+        if (submissionIdField) submissionIdField.value = submissionId;
+
+        // Client-side validation
+        var subjectId = '{{ form.subject.id_for_label|escapejs }}';
+        var categoryId = '{{ form.category.id_for_label|escapejs }}';
+        var dateId = '{{ form.date.id_for_label|escapejs }}';
+        var deadlineId = '{{ form.deadline.id_for_label|escapejs }}';
+        
+        var subject = document.getElementById(subjectId).value;
+        var category = document.getElementById(categoryId).value;
+        var date = document.getElementById(dateId).value;
+        var deadline = document.getElementById(deadlineId).value;
+        var selectedDestinations = Array.from(document.querySelectorAll('#destinations-container input[type="checkbox"]:checked'));
+        var selectedService = document.querySelector('#services-container input[type="radio"]:checked') || document.querySelector('input[name="service"]');
+        var selectedFormat = document.querySelector('#format-container input[type="radio"]:checked');
+
+        console.log('Selected service:', selectedService ? selectedService.value : 'None');
+
+        if (!subject) {
+            alert('Veuillez entrer un sujet.');
+            if (submissionIdField) submissionIdField.value = '';
+            return false;
         }
-        if (!response.ok) {
-            throw new Error(data.errors || `Erreur ${response.status}`);
+        if (!category) {
+            alert('Veuillez sélectionner une catégorie.');
+            if (submissionIdField) submissionIdField.value = '';
+            return false;
         }
-        return data;
-    })
-    .then(data => {
-        if (data.success) {
-            alert(data.message || 'Requête créée avec succès !');
-            closeModal('newLettreModal');
-            form.reset();
-            window.location.href = "{% url 'lettres:dashboard' %}";
-        } else {
-            let errorMessage = 'Erreur lors de l\'enregistrement de la requête.';
-            if (data.errors) {
-                if (typeof data.errors === 'object') {
-                    errorMessage = Object.entries(data.errors).map(([field, errors]) => 
-                        `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`
-                    ).join('\n');
-                } else {
-                    errorMessage = data.errors;
-                }
+        if (!date) {
+            alert('Veuillez entrer une date de réception.');
+            if (submissionIdField) submissionIdField.value = '';
+            return false;
+        }
+        if (!deadline) {
+            alert('Veuillez entrer une date limite de réponse.');
+            if (submissionIdField) submissionIdField.value = '';
+            return false;
+        }
+        {% if user_role != 'saisie_ec' and user_role != 'admin_saisie' and user_role != 'directeur_regional' %}
+        var allDestinationsCheckbox = document.getElementById('{{ form.sent_to_all_destinations.id_for_label|escapejs }}');
+        if (selectedDestinations.length === 0 && !(allDestinationsCheckbox && allDestinationsCheckbox.checked)) {
+            alert('Veuillez sélectionner au moins une destination ou cocher "Tout sélectionner".');
+            if (submissionIdField) submissionIdField.value = '';
+            return false;
+        }
+        {% endif %}
+        if (!selectedService) {
+            alert('Veuillez sélectionner un service.');
+            if (submissionIdField) submissionIdField.value = '';
+            return false;
+        }
+        if (!selectedFormat) {
+            alert('Veuillez sélectionner un format de la requête.');
+            if (submissionIdField) submissionIdField.value = '';
+            return false;
+        }
+
+        isSubmitting = true;
+        if (submitButton) submitButton.disabled = true;
+        if (submitText) submitText.classList.add('hidden');
+        if (loadingSpinner) loadingSpinner.classList.remove('hidden');
+        if (form) form.classList.add('opacity-50', 'pointer-events-none');
+
+        var formData = new FormData(form);
+        console.log('Form data service:', formData.get('service'));
+
+        var url = "{% url 'lettres:new_lettres'|escapejs %}";
+        fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token|escapejs }}',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-Submission-ID': submissionId
             }
-            alert(errorMessage);
-        }
-    })
-    .catch(error => {
-        console.error('Submission Error:', error.message, 'Submission ID:', submissionId);
-        alert(error.message || 'Une erreur est survenue. Veuillez réessayer ou contactez l’administrateur.');
-    })
-    .finally(() => {
-        isSubmitting = false;
-        submitButton.disabled = false;
-        submitText.classList.remove('hidden');
-        loadingSpinner.classList.add('hidden');
-        form.classList.remove('opacity-50', 'pointer-events-none');
-        submissionIdField.value = '';
-        submissionId = null;
-    });
-    
-    return false;
-}
-   
+        })
+        .then(function(response) {
+            return response.text().then(function(text) {
+                console.log('Response Status:', response.status, 'Submission ID:', submissionId);
+                var contentType = response.headers.get('content-type');
+                var data;
+                if (contentType && contentType.includes('application/json')) {
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        throw new Error('Invalid JSON response');
+                    }
+                } else {
+                    console.log('Unexpected Response:', text.substring(0, 100));
+                    throw new Error('Une erreur inattendue s\'est produite sur le serveur.');
+                }
+                if (!response.ok) {
+                    throw new Error(data.errors || 'Erreur ' + response.status);
+                }
+                return data;
+            });
+        })
+        .then(function(data) {
+            if (data.success) {
+                alert(data.message || 'Requête créée avec succès !');
+                closeModal('newLettreModal');
+                if (form) form.reset();
+                window.location.href = "{% url 'lettres:dashboard'|escapejs %}";
+            } else {
+                var errorMessage = 'Erreur lors de l\'enregistrement de la requête.';
+                if (data.errors) {
+                    if (typeof data.errors === 'object') {
+                        errorMessage = Object.entries(data.errors).map(function(entry) { 
+                            var field = entry[0];
+                            var errors = entry[1];
+                            return field + ': ' + (Array.isArray(errors) ? errors.join(', ') : errors);
+                        }).join('\n');
+                    } else {
+                        errorMessage = data.errors;
+                    }
+                }
+                alert(errorMessage);
+            }
+        })
+        .catch(function(error) {
+            console.error('Submission Error:', error.message, 'Submission ID:', submissionId);
+            alert(error.message || 'Une erreur est survenue. Veuillez réessayer ou contactez l\'administrateur.');
+        })
+        .finally(function() {
+            isSubmitting = false;
+            if (submitButton) submitButton.disabled = false;
+            if (submitText) submitText.classList.remove('hidden');
+            if (loadingSpinner) loadingSpinner.classList.add('hidden');
+            if (form) form.classList.remove('opacity-50', 'pointer-events-none');
+            if (submissionIdField) submissionIdField.value = '';
+            submissionId = null;
+        });
+        
+        return false;
+    }
 
     // Initialize event listeners with proper cleanup
     function initializeEventListeners() {
         // Remove any existing listeners first
-        const form = document.getElementById('new-lettre-form');
+        var form = document.getElementById('new-lettre-form');
         if (!form) return;
         
         // Clone and replace the form to remove all existing event listeners
-        const newForm = form.cloneNode(true);
+        var newForm = form.cloneNode(true);
         form.parentNode.replaceChild(newForm, form);
         
         // Add the submit event listener to the new form
-        document.getElementById('new-lettre-form').addEventListener('submit', handleSubmit);
+        var newFormElement = document.getElementById('new-lettre-form');
+        if (newFormElement) {
+            newFormElement.addEventListener('submit', handleSubmit);
+        }
         
-        // Add other event listeners
-        {% if user_role == 'saisie_ec' or user_role == 'admin_saisie' %}
-        document.querySelectorAll('input[type="checkbox"][disabled], input[type="radio"]:disabled').forEach(input => {
+        // Add other event listeners based on role
+        {% if user_role == 'saisie_ec' or user_role == 'admin_saisie' or user_role == 'directeur_regional' %}
+        document.querySelectorAll('input[type="checkbox"][disabled], input[type="radio"]:disabled').forEach(function(input) {
             input.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
             });
         });
         {% else %}
-        const allDestinationsCheckbox = document.getElementById('{{ form.sent_to_all_destinations.id_for_label }}');
+        var allDestinationsCheckboxId = '{{ form.sent_to_all_destinations.id_for_label|escapejs }}';
+        var allDestinationsCheckbox = document.getElementById(allDestinationsCheckboxId);
         if (allDestinationsCheckbox) {
             allDestinationsCheckbox.addEventListener('change', toggleAllDestinations);
         }
         
-        document.querySelectorAll('#destinations-container input[type="checkbox"]').forEach(checkbox => {
+        document.querySelectorAll('#destinations-container input[type="checkbox"]').forEach(function(checkbox) {
             checkbox.addEventListener('change', function() {
                 if (allDestinationsCheckbox) {
                     allDestinationsCheckbox.checked = false;
@@ -682,43 +737,65 @@
         });
         {% endif %}
         
-        document.getElementById('{{ form.image_file.id_for_label }}').addEventListener('change', () => 
-            updateFileDisplay('{{ form.image_file.id_for_label }}', 'image-file-display'));
+        var imageFileId = '{{ form.image_file.id_for_label|escapejs }}';
+        var imageInput = document.getElementById(imageFileId);
+        if (imageInput) {
+            imageInput.addEventListener('change', function() { 
+                updateFileDisplay(imageFileId, 'image-file-display'); 
+            });
+        }
         
-        document.getElementById('{{ form.response_template.id_for_label }}').addEventListener('change', () => 
-            updateFileDisplay('{{ form.response_template.id_for_label }}', 'template-file-display'));
+        var templateFileId = '{{ form.response_template.id_for_label|escapejs }}';
+        var templateInput = document.getElementById(templateFileId);
+        if (templateInput) {
+            templateInput.addEventListener('change', function() { 
+                updateFileDisplay(templateFileId, 'template-file-display'); 
+            });
+        }
         
         updateServiceAvailability();
         
+        // Close dropdown on outside click
         document.addEventListener('click', function(event) {
-            const dropdown = document.getElementById('priority-dropdown');
-            const priorityButton = document.querySelector('[onclick="togglePriorityDropdown()"]');
+            var dropdown = document.getElementById('priority-dropdown');
+            var priorityButton = document.querySelector('[onclick="togglePriorityDropdown()"]');
             if (dropdown && priorityButton && !dropdown.contains(event.target) && !priorityButton.contains(event.target)) {
                 dropdown.classList.add('hidden');
-                document.getElementById('priority-chevron').classList.remove('rotate-180');
+                var chevron = document.getElementById('priority-chevron');
+                if (chevron) chevron.classList.remove('rotate-180');
             }
         });
     }
 
-    // Initialize when DOM is loaded
-    document.addEventListener('DOMContentLoaded', function() {
-        initializeEventListeners();
-    });
-
     // Close modal function
-    window.closeModal = function(modalId) {
-        const modal = document.getElementById(modalId);
+    function closeModal(modalId) {
+        var modal = document.getElementById(modalId);
         if (modal) {
             modal.style.display = 'none';
             // Reset form state
-            const form = document.getElementById('new-lettre-form');
+            var form = document.getElementById('new-lettre-form');
             if (form) {
                 form.reset();
                 setActiveSection('basic-info');
             }
             isSubmitting = false;
             submissionId = null;
-            document.getElementById('submission-id').value = '';
+            var submissionIdField = document.getElementById('submission-id');
+            if (submissionIdField) submissionIdField.value = '';
         }
-    };
+    }
+
+    // Initialize when DOM is loaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            initForm();
+            initializeEventListeners();
+        });
+    } else {
+        initForm();
+        initializeEventListeners();
+    }
+
+    // Expose closeModal globally
+    window.closeModal = closeModal;
 </script>
