@@ -2,6 +2,7 @@
 from django.contrib import admin
 from .models import Destination, Lettre, Response, SystemSettings, UserProfile
 
+
 @admin.register(Destination)
 class DestinationAdmin(admin.ModelAdmin):
     list_display = ('nom', 'telephone', 'email')
@@ -52,4 +53,5 @@ class UserProfileAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'user__email')
     list_editable = ('role', 'destination', 'service')
     ordering = ('user',)
+
     autocomplete_fields = ('destination',)
