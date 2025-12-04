@@ -69,21 +69,21 @@ Voici quelques captures d'écran illustrant les principales interfaces de Requet
 
 | Tableau de Bord Principal | Détails d'une Requête |
 |:---:|:---:|
-| ![Tableau de Bord](dashboard.png) | ![Détails Requête](detail_requet.jpg) |
+| ![Tableau de Bord](screenshots/dashboard.png) | ![Détails Requête](screenshots/detail_requet.jpg) |
 | *Vue globale des statistiques et indicateurs* | *Consultation détaillée et historique* |
 
 ### Workflow de Création de Requête (3 Étapes)
 
 | Étape 1 : Informations | Étape 2 : Configuration | Étape 3 : Pièces Jointes |
 |:---:|:---:|:---:|
-| ![Etape 1](new_requet1.jpg) | ![Etape 2](new_requet2.jpg) | ![Etape 3](new_requet3.jpg) |
+| ![Etape 1](screenshots/new_requet1.jpg) | ![Etape 2](screenshots/new_requet2.jpg) | ![Etape 3](screenshots/new_requet3.jpg) |
 | *Saisie des données de base* | *Choix des destinations et priorités* | *Ajout de documents annexes* |
 
 ### Traitement et Statistiques
 
 | Interface de Réponse | Tableau de Bord Statistiques |
 |:---:|:---:|
-| ![Interface Réponse](reply_requet.jpg) | ![Statistiques](statistiques.jpg) |
+| ![Interface Réponse](screenshots/reply_requet.jpg) | ![Statistiques](screenshots/statistiques.jpg) |
 | *Formulaire de traitement et validation* | *Analyse des performances* |
 
 ---
