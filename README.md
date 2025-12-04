@@ -69,7 +69,7 @@ Voici quelques captures d'écran illustrant les principales interfaces de Requet
 
 | Tableau de Bord Principal | Détails d'une Requête |
 |:---:|:---:|
-| ![Tableau de Bord](screenshots/dashboard.png.jpe) | ![Détails Requête](screenshots/detail_requet.jpg) |
+| ![Tableau de Bord](screenshots/dashboard.png.jpg) | ![Détails Requête](screenshots/detail_requet.jpg) |
 | *Vue globale des statistiques et indicateurs* | *Consultation détaillée et historique* |
 
 ### Workflow de Création de Requête (3 Étapes)
