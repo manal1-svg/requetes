@@ -5,7 +5,8 @@
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5-563D7C?style=for-the-badge&logo=bootstrap&logoColor=white)
 
-> **Projet de Stage d'Été 2025** > **Organisme :** Direction Régionale de l’Oriental du Ministère de l’Équipement et de l’Eau  
+> **Projet de Stage d'Été 2025**
+> **Organisme :** Direction Régionale de l’Oriental du Ministère de l’Équipement et de l’Eau
 > **École :** École Marocaine des Sciences de l’Ingénieur (EMSI) - Ingénierie Informatique et Réseaux
 
 ---
@@ -62,17 +63,28 @@ L'application est structurée autour de 5 rôles utilisateurs distincts avec des
 
 ## 📸 Aperçu de l'Application
 
-*(Ajoutez vos captures d'écran ici pour illustrer le projet)*
+Voici quelques captures d'écran illustrant les principales interfaces de RequetManager.
 
-| Tableau de Bord | Suivi des Requêtes |
-|:---:|:---:|
-| ![Dashboard](screenshots/dashboard.png) | ![Suivi](screenshots/suivi.png) |
-| *Vue globale des statistiques* | *Interface de suivi détaillé* |
+### Vue d'ensemble et Suivi
 
-| Création de Requête | Gestion des Utilisateurs |
+| Tableau de Bord Principal | Détails d'une Requête |
 |:---:|:---:|
-| ![Formulaire](screenshots/formulaire.png) | ![Admin](screenshots/admin_users.png) |
-| *Formulaire multi-étapes* | *Panel d'administration* |
+| ![Tableau de Bord](dashboard.png) | ![Détails Requête](detail_requet.jpg) |
+| *Vue globale des statistiques et indicateurs* | *Consultation détaillée et historique* |
+
+### Workflow de Création de Requête (3 Étapes)
+
+| Étape 1 : Informations | Étape 2 : Configuration | Étape 3 : Pièces Jointes |
+|:---:|:---:|:---:|
+| ![Etape 1](new_requet1.jpg) | ![Etape 2](new_requet2.jpg) | ![Etape 3](new_requet3.jpg) |
+| *Saisie des données de base* | *Choix des destinations et priorités* | *Ajout de documents annexes* |
+
+### Traitement et Statistiques
+
+| Interface de Réponse | Tableau de Bord Statistiques |
+|:---:|:---:|
+| ![Interface Réponse](reply_requet.jpg) | ![Statistiques](statistiques.jpg) |
+| *Formulaire de traitement et validation* | *Analyse des performances* |
 
 ---
 
@@ -81,6 +93,7 @@ L'application est structurée autour de 5 rôles utilisateurs distincts avec des
 Pour tester le projet localement, suivez ces étapes :
 
 1.  **Cloner le dépôt :**
+    *(Remplacez `votre-username` par votre vrai nom d'utilisateur GitHub)*
     ```bash
     git clone [https://github.com/votre-username/RequetManager.git](https://github.com/votre-username/RequetManager.git)
     cd RequetManager
